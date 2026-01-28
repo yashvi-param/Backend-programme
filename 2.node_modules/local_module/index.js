@@ -1,0 +1,10 @@
+
+//default 
+//we change name in default
+const {add,sub} = require("./math.js");
+// import addition from "./math.js";
+
+const result = addition(28,77);
+const result2 = sub(100,45);
+console.log("result",result);
+console.log("result",result2);
