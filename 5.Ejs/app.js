@@ -1,39 +1,102 @@
 import express from "express";
+import { fileURLToPath } from "url";
+import path from "path";
 
 const app = express();
 
 app.set("view engine", "ejs");
+
+app.use(express.json());
+
 app.use(express.urlencoded({ extended: true }));
 
+// serving static file 
 
-let StudentList = [
-    { id: 1, name: "jordan" },
-    { id: 2, name: "smith" }
+const __fileName = fileURLToPath(import.meta.url);
+
+const __dirName = path.dirname(__fileName);
+
+console.log("filename", __fileName);
+console.log("folder", __dirName);
+
+app.use(express.static(path.join(__dirName,"public")))
+
+let studentList = [
+  {
+    id: 1,
+    name: "jordan",
+  },
+  {
+    id: 2,
+    name: "alice",
+  },
 ];
 
-// SHOW STUDENT LIST
 app.get("/", (req, res) => {
-    res.render("index", { students: StudentList });
+  res.render("index", { studentList });
 });
 
-// SHOW ADD PAGE
 app.get("/add", (req, res) => {
-    res.render("add");
+  res.render("add");
 });
 
-// ADD STUDENT
-app.post("/add-student", (req, res) => {
-    const { name } = req.body;
+app.post("/add", (req, res) => {
+  const { name } = req.body;
 
-    StudentList.push({
-        id: StudentList.length + 1,
-        name: name
-    });
+  const newStudent = {
+    id: new Date().getTime(),
+    name,
+  };
 
-    res.redirect("/");
+  studentList.push(newStudent);
+
+  res.redirect("/");
+});
+
+app.get("/edit/:id", (req, res) => {
+  const id = Number(req.params.id);
+
+  const student = studentList.find((s) => s.id === id);
+
+  if (!student) {
+    return res.status(404).json("student not found");
+  }
+
+  res.render("edit", { student });
+});
+
+app.post("/edit/:id", (req, res) => {
+  const id = Number(req.params.id);
+
+  const student = studentList.find((s) => s.id === id);
+
+  if (!student) {
+    return res.status(404).json("student not found");
+  }
+
+  const { name } = req.body;
+
+  student.name = name;
+
+  res.redirect("/");
+});
+
+app.get("/delete/:id", (req, res) => {
+  const id = Number(req.params.id);
+
+  const student = studentList.find((s) => s.id === id);
+
+  if (!student) {
+    return res.status(404).json("student not found");
+  }
+
+  studentList = studentList.filter((s) => s.id !== id);
+
+  res.redirect("/");
 });
 
 const port = 5000;
+
 app.listen(port, () => {
-    console.log("server running on port", port);
+  console.log("server running on ", port);
 });

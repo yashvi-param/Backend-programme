@@ -1,22 +1,45 @@
-
 <!DOCTYPE html>
-<html>
-<head>
-    <title>Students</title>
-</head>
-<body>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>EJS CRUD</title>
 
-<h1>Student List</h1>
+    <link rel="stylesheet" href="./css/style.css">
+  
+  </head>
+  <body>
 
-<a href="/add">➕ Add Student</a>
+    <h1>student list</h1>
+
+    <a href="/add">add student data</a>
+
 
 <ul>
-    <% students.forEach(student => { %>
+
+  <!-- studentList.forEach((s)=>{
+    console.log(s.name)
+  }) -->
+
+
+
+
+
+      <%studentList.forEach((s)=>{%>
+    
         <li>
-            <%= student.id %> - <%= student.name %>
+
+          <%=s.name%>
+   
+          <a href="/edit/<%=s.id%>">edit</a>
+          <a href="/delete/<%=s.id%>">delete</a>
+       
+         
         </li>
-    <% }) %>
+    
+   <%})%>
+
 </ul>
 
-</body>
+  </body>
 </html>
