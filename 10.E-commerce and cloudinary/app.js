@@ -1,29 +1,47 @@
-
 import express from "express";
-import cors from "cors";
 import dotenv from "dotenv";
 import connectDB from "./config/db.js";
-import router from "./routers/productRoute.js";
+import HttpError from "./middleware/HttpError.js";
+import bookRoutes from "./routes/bookRoutes.js";
 
-dotenv.config({path:"./.env"});
+dotenv.config();
 
 const app = express();
 
-connectDB();
-
-app.use(cors());
 app.use(express.json());
 
-console.log("PORT:", process.env.PORT);
+app.use("/books", bookRoutes);
 
 app.get("/", (req, res) => {
-  res.status(200).json("Hello from Server....!");
+  res.status(200).json({
+    message: "📚 Welcome to Book Store Management System",
+  });
 });
 
-app.use("/product", router);
-
-const PORT = process.env.PORT || 5000;
-
-app.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
+app.use((req, res, next) => {
+  next(new HttpError("Route not found", 404));
 });
+
+app.use((error, req, res, next) => {
+  res.status(error.statusCode || 500).json({
+    message: error.message || "Internal Server Error",
+  });
+});
+
+const port = process.env.PORT || 5000;
+
+async function startServer() {
+  try {
+    await connectDB();
+
+    app.listen(port, () => {
+      console.log(`🚀 Server running on port ${port}`);
+    });
+
+  } catch (error) {
+    console.log("Failed to start server:", error.message);
+    process.exit(1);
+  }
+}
+
+startServer();
