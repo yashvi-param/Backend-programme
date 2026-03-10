@@ -1,84 +1,56 @@
 import express from "express";
-import HttpError from "./middleware/HttpError.js";
+import dotenv from "dotenv";
+
+import connectDB from "./config/db.js";
+import HttpError from "./middleware/httpError.js";
+import userRoutes from "./routes/userRoutes.js";
+
+dotenv.config({ path: "./.env" });
 
 const app = express();
+
+// Middlewares
 app.use(express.json());
 
+// Routes
+app.use("/users", userRoutes);
+
+// Home Route
 app.get("/", (req, res) => {
-    res.status(200).json("hello from server");
+  res.status(200).json({
+    message: "User API is running successfully 👤",
+  });
 });
 
-
-let taskList = [
-    {
-        id: 1,
-        task: "read",
-        description: "today i read new book"
-    },
-    {
-        id: 2,
-        task: "write",
-        description: "today i write book"
-    },
-    {
-        id: 3,
-        task: "complete",
-        description: "complete your work today"
-    },
-]
-// get all tasks
-app.get("/taskList", (req, res) => {
-
-    if (taskList.length <= 0) {
-        return res.status(200).json("task list is empty");
-    }
-    res.status(200).json({ message: "task list retrieved successfully ", taskList });
-});
-
-
-//getting data using specific id
-app.get("/taskList/:id", (req, res) => {
-    const id = Number(req.params.id);
-
-    const task = taskList.find((t) => t.id === id);
-    if (!task) {
-        return res.status(404).json("task data not found");
-    }
-    res.status(200).json(task);
-
-});
-//adding task data
-app.post("/addTask", (req, res) => {
-    const { task, description } = req.body; //for data extract
-    const newTaskData = {
-        id: new Date().getTime(),
-        task,
-        description
-    }//data add
-
-    taskList.push(newTaskData);
-
-    res.status(201).json({
-        message: "new task added",
-        newTaskData
-    })
-})
-
-//place AFTER all routes
+// Undefined Routes Handling
 app.use((req, res, next) => {
-    next(new HttpError("requested route not found", 404));
-})
-
-//centralize error handling
-app.use((error, req, res, next) => {
-    if (req.headersSent) {
-        next(error);
-    }
-    res.status(error.statusCode || 500).json({ message: error.message || "something went wrong" });
+  next(new HttpError("Requested route not found", 404));
 });
 
-const port = 5001;
+// Centralized Error Handler
+app.use((error, req, res, next) => {
+  res.status(error.statusCode || 500).json({
+    success: false,
+    message: error.message || "Internal Server Error",
+  });
+});
 
-app.listen(port, () => {
-    console.log("server running on port", port);
-})
+const PORT = process.env.PORT || 5000;
+
+const startServer = async () => {
+  try {
+    await connectDB();
+
+    app.listen(PORT, () => {
+      console.log(`Server running on port ${PORT}`);
+    });
+
+  } catch (error) {
+    console.error(error.message);
+    process.exit(1);
+  }
+};
+
+startServer();
+
+export default app;
