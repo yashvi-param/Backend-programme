@@ -1,13 +1,14 @@
+
 import mongoose from "mongoose";
 
-const userSchema = new mongoose.Schema(
-{
+import bcrypt from "bcrypt";
+
+const userSchema = mongoose.Schema({
   name: {
     type: String,
     required: true,
     trim: true,
   },
-
   email: {
     type: String,
     required: true,
@@ -16,24 +17,47 @@ const userSchema = new mongoose.Schema(
       if (!value.endsWith("@gmail.com")) {
         throw new Error("Email must be gmail");
       }
-    }
+    },
   },
-
   password: {
     type: String,
     required: true,
     trim: true,
     minlength: 6,
     validate: (value) => {
-      if (value.toLowerCase() === "password") {
-        throw new Error("Password can't contain 'password'");
+      if (!value.toLowerCase() === "password") {
+        throw new Error("password can't contain password word as a password");
       }
-    }
+    },
+  },
+});
+
+userSchema.pre("save", async function () {
+  const user = this;
+
+  if (user.isModified("password")) {
+    user.password = await bcrypt.hash(user.password, 8);
   }
+});
 
-},
+userSchema.statics.findByCredentials = async function (email, password) {
+  try {
+    const user = await this.findOne({ email });
+    if (!user) {
+      throw new Error("Unable To Login");
+    }
 
-);
+    const isMatch = await bcrypt.compare(password, user.password);
+
+    if (!isMatch) {
+      throw new Error("Unable To Login");
+    }
+
+    return user;
+  } catch (error) {
+    throw new Error(error.message);
+  }
+};
 
 const User = mongoose.model("User", userSchema);
 
