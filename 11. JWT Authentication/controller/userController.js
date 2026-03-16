@@ -95,4 +95,46 @@ const logOutAll = async (req, res, next) => {
   }
 };
 
-export default { add, login, getAllUser, authLogin, logOut, logOutAll };
+const updateuser = async (req, res, next) => {
+  try {
+
+    const user = await Usermodel.findByIdAndUpdate(
+      req.params.id,
+      req.body,
+      { new: true }
+    );
+
+    if (!user) {
+      return next(new HttpError("User not found", 404));
+    }
+
+    res.status(200).json({
+      message: "User updated successfully",
+      user,
+    });
+
+  } catch (error) {
+    next(new HttpError(error.message, 500));
+  }
+};
+
+const deleteUser = async (req, res, next) => {
+  try {
+
+    const user = await Usermodel.findByIdAndDelete(req.params.id);
+
+    if (!user) {
+      return next(new HttpError("User not found", 404));
+    }
+
+    res.status(200).json({
+      message: "User deleted successfully",
+    });
+
+  } catch (error) {
+    next(new HttpError(error.message, 500));
+  }
+};
+
+
+export default { add, login, getAllUser, authLogin, logOut, logOutAll, updateuser, deleteUser };
