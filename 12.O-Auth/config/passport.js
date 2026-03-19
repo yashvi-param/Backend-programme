@@ -1,20 +1,34 @@
+import dotenv from "dotenv";
+dotenv.config({ path: "./.env" });
+
 import passport from "passport";
-
-import googlepassport from "passport-google-oauth20";
-import { Profiler } from "react";
-
-const GoogleAuthStrategy = GoogleStrategy.Strategy;
+import { Strategy as GoogleStrategy } from "passport-google-oauth20";
 
 passport.use(
-  new GoogleAuthStrategy(
+  new GoogleStrategy(
     {
-      clientID: GOOGLE_CLIENT_ID,
-    clientSecret: GOOGLE_CLIENT_SECRET,
-    callbackURL: "http://www.example.com/auth/google/callback"
+      clientID: process.env.CLIENT_ID,
+      clientSecret: process.env.CLIENT_SECRET,
+      callbackURL: "http://localhost:5000/auth/google/redirect",
     },
+    async (accessToken, refreshToken, profile, cb) => {
+      try {
+        let user = await User.findOne({ googleId: profile.id });
 
-    async (Profiler, done) => {},
-    ),
-)
+        if (!user) {
+          user = await User.create({
+            name: profile.displayName,
+            email: profile.emails[0].value,
+            googleId: profile.id,
+          });
+        }
+
+        return cb(null, user);
+      } catch (err) {
+        return cb(err, null);
+      }
+    },
+  ),
+);
 
 export default passport;
