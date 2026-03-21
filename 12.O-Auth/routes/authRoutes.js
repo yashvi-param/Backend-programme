@@ -1,5 +1,5 @@
 import express from "express";
-import passport, { session } from "passport";
+import passport from "passport";
 
 const router = express.Router();
 
@@ -20,5 +20,5 @@ router.get("/google/redirect", passport.authenticate("google",
 ), (req, res) => {
   res.send("this is callback url");
 });
-
+3
 export default router;

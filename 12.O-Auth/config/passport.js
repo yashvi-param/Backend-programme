@@ -2,17 +2,20 @@ import dotenv from "dotenv";
 dotenv.config({ path: "./.env" });
 
 import passport from "passport";
-import { Strategy as GoogleStrategy } from "passport-google-oauth20";
+import passportGoogle from "passport-google-oauth20";
+
+import User from "../model/User.js";
+
+const googleAuthStrategy = passportGoogle.Strategy;
 
 passport.use(
-  new GoogleStrategy(
+  new googleAuthStrategy(
     {
       clientID: process.env.CLIENT_ID,
       clientSecret: process.env.CLIENT_SECRET,
       callbackURL: "http://localhost:5000/auth/google/redirect",
     },
     async (accessToken, refreshToken, profile, cb) => {
-      try {
         let user = await User.findOne({ googleId: profile.id });
 
         if (!user) {
@@ -24,11 +27,22 @@ passport.use(
         }
 
         return cb(null, user);
-      } catch (err) {
-        return cb(err, null);
+      
       }
-    },
   ),
 );
+
+passport.serializeUser((user, done) => {
+  done(null, user.id);
+});
+
+passport.deserializeUser(async (id, done) => {
+  try {
+    const user = await User.findById(id);
+    done(null, user);
+  } catch (err) {
+    done(err);
+  }
+});
 
 export default passport;
