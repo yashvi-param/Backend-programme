@@ -22,7 +22,6 @@ app.use(Session({
 })
 );
 
-app.user("/profile")
 
 app.use(passport.session());
 app.use(passport.initialize());

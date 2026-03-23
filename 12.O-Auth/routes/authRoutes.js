@@ -1,5 +1,6 @@
 import express from "express";
 import passport from "passport";
+import HttpError from "../middleware/HttpError.js";
 
 const router = express.Router();
 
@@ -15,10 +16,26 @@ router.get(
 );
 
 router.get("/google/redirect", passport.authenticate("google",
-  {failureRedirect: "/login",
-  session: false}
+  {failureRedirect: "/",}
 ), (req, res) => {
-  res.send("this is callback url");
+  res.redirect("this is callback url");
 });
-3
+
+router.get("/logout", (req, res, next) => {
+  req.logout((err) => {
+    if (err) {
+      return next(new HttpError("Failed to log out", 500));
+    }
+
+    // Optionally destroy session
+    req.session?.destroy((sessionErr) => {
+      if (sessionErr) {
+        return next(new HttpError("Failed to destroy session", 500));
+      }
+      res.redirect("/");
+    });
+  });
+});
+
 export default router;
+
