@@ -1,4 +1,6 @@
+
 import express from "express";
+
 import userController from "../controllers/userController.js";
 import validate from "../middleware/validate.js";
 import registerSchema from "../validation/registerSchema.js";
@@ -6,10 +8,16 @@ import auth from "../middleware/auth.js";
 
 const router = express.Router();
 
-router.post("/add", validate(registerSchema), userController.add);
+router.post("/addUser", validate(registerSchema), userController.addUser);
 
-router.post("/login", userController.login);
+router.post("/loginUser", userController.loginUser);
 
 router.get("/authLogin", auth, userController.authLogin);
+
+router.post("/logOut", auth, userController.logOut);
+
+router.post("/logOutAll", auth, userController.logOutAll);
+
+router.get("/getAllUsers", userController.getAllUsers);
 
 export default router;
