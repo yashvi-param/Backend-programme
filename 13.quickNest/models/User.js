@@ -2,6 +2,7 @@
 import mongoose from "mongoose";
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
+import dotenv from "dotenv";
 
 const userSchema = mongoose.Schema(
   {
@@ -29,6 +30,12 @@ const userSchema = mongoose.Schema(
       enum: ["customer", "provider", "admin", "super-admin"],
       default: "customer",
     },
+    profilepic: {
+      type: String,
+    },
+    cloudinary_id: {
+      type: String,
+    },    
     tokens: [
       {
         token: {

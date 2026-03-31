@@ -102,4 +102,40 @@ const getAllUsers = async (req, res, next) => {
   }
 };
 
-export default { addUser, loginUser, authLogin, logOut, logOutAll, getAllUsers };
+const update = async (req, res, next) => {
+  try {
+    const user = req.user;
+    if (!user) {
+      return next(new HttpError("User not found", 404));
+    }
+    const updates = Object.keys(req.body);
+    const allowedUpdates = ["name", "email", "password", "phone"];
+    const isValid = updates.every((field) =>
+      allowedUpdates.includes(field)
+    );
+    if (!isValid) {
+      return next(new HttpError("only allowed field can be updated", 400));
+    }
+    updates.forEach((update) => {
+      user[update] = req.body[update];
+    });
+    await user.save();
+    res.status(200).json({ success: true, message: "User data updated successfully" });
+  } catch (error) {
+    next(new HttpError(error.message, 404));
+  }
+
+};
+
+const deleteUser = async (req, res, next) => {
+  try {
+    const user = req.user;
+    await user.deleteOne(user);
+
+    res.status(200).json({ success: true, message: "User deleted successfully" });
+  } catch (error) {
+    next(new HttpError(error.message, 404));
+  }
+};
+
+export default { addUser, loginUser, authLogin, logOut, logOutAll, getAllUsers, update, deleteUser };
