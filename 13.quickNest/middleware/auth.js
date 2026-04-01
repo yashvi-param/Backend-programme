@@ -1,38 +1,28 @@
-
+import HttpError from "../middleware/HttpError.js";
 import jwt from "jsonwebtoken";
+import User from "../model/userModel.js";
 
-import HttpError from "./HttpError.js";
-import User from "../models/User.js";
-
-const auth = async function (req, res, next) {
-    try{
+const auth = async(req,res,next)=>{
+    try {
         const authHeader = req.header("Authorization");
-
-        if (!authHeader) {
-            return next(new HttpError("Auth header is required",400));
+        if(!authHeader){
+            return next(new HttpError("authorization header is required",400));
         }
+        const token = authHeader.replace("Bearer ","");
 
-        const token = authHeader.replace("Bearer ", "");
+        const decode = jwt.verify(token, process.env.JWT_SECRET);
 
-        const decoded = jwt.verify(token,process.env.JWT_SECRET);
+        const user = await User.findOne({_id :decode._id , "tokens.token" :token});
 
-        const user = await User.findOne({
-            _id: decoded._id,
-            "tokens.token": token,
-        });
-
-        if (!user){
-            return next(new HttpError("Authentication failed",401));
+        if(!user){
+            return next(new HttpError("plz authentication",401));
         }
-
-        req.user = user;
-
+        req.user = user ;
         req.token = token;
-
         next();
-    }catch(error){
-     next(new HttpError("Please authenticate", 401));
-    }
-};
 
+    } catch (error) {
+        next(new HttpError("plz authentication",401));
+    }
+}
 export default auth;
