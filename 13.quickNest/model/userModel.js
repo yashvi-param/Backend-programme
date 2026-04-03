@@ -2,103 +2,118 @@ import mongoose from "mongoose";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 
-const userSchema = new mongoose.Schema({
-    name:{
-        type:String,
-        required:true,
-        trim:true
+const UserSchema = new mongoose.Schema(
+  {
+    name: {
+      type: String,
+      required: true,
+      trim: true,
     },
-    email:{
-        type:String,
-        required:true,
-        unique:true
-    },
-    password:{
-        type:String,
-        required:true,
-    },
-    phone:{
-        type:Number,
-        required:true,
-    },
-    profilePic:{
-        type:String
-    },
-    role:{
-        type:String,
-        enum:["customer","provider","admin","super_admin"],
-        default:"customer"
-    },
-    cloudinaryID:{
-        type:String,
-    },
-    isVerified:{
-        type:Boolean,
-        default:false
-    },
-    tokens:[
-        {
-            token:{
-                type:String,
-                required:true
-            }
-        }
-    ]
-},
-    {
-        timestamps:true
-    }
-)
 
-userSchema.pre("save",async function(){
-    const user = this;
-    if(user.isModified("password")){
-        user.password = await bcrypt.hash(user.password,8);
-    }
+    email: {
+      type: String,
+      required: true,
+      trim: true,
+      unique: true, 
+    },
+
+    password: {
+      type: String,
+      required: true,
+    },
+
+    phone: {
+      type: Number,
+      required: true,
+    },
+
+    role: {
+      type: String,
+      enum: ["customer", "provider", "admin", "super-admin"],
+      default: "customer",
+    },
+
+    profilePic: {
+      type: String,
+    },
+    
+    cloudinaryId: {
+      type: String,
+    },
+
+    isVerified: {
+      type: Boolean,
+      default: false,
+    },
+    
+    tokens:[
+      {
+        token:{
+          type: String,
+          required: true,
+        },
+      },
+    ],
+  },
+  { timestamps: true }
+);
+
+
+// Hash Password
+UserSchema.pre("save", async function () {
+  const user = this;
+
+  if (user.isModified("password")) {
+   user.password = await bcrypt.hash(user.password, 8);
+  }
 });
 
-userSchema.statics.findByCredentials = async function(email,password){
-    const user = await User.findOne({email});
-    if(!user){
-        throw new Error("unable to login");
+
+// Login Logic
+UserSchema.statics.findByCredentials = async function (email, password) {
+  try {
+    const user = await this.findOne({ email });
+
+    if (!user) {
+      throw new Error("Invalid email or password");
     }
-    const isMatched = await bcrypt.compare(password,user.password);
-    if(!isMatched){
-        throw new Error("unable to login");
+
+    const isMatched = await bcrypt.compare(password, user.password);
+
+    if (!isMatched) {
+      throw new Error("Invalid email or password");
     }
+
     return user;
-}
+  } catch (error) {
+    throw new Error(error.message);
+  }
+};
 
-userSchema.methods.generateAuthToken = async function (){
-    try {
-        const user = this;
-        const token = jwt.sign(
-            {   _id : user._id.toString(),
-                role:user.role
-            },
-            process.env.JWT_SECRET
-        );
-        user.tokens = user.tokens.concat({token});
-        await user.save();
-        return token;
-    } catch (error) {
-        throw new Error(error);
-    }
-    
-}
 
-userSchema.methods.toJSON = function(){
+// Generate Token
+UserSchema.methods.generateAuthToken = async function () {
+  try {
     const user = this;
-    const userObject = user.toObject();
 
-    delete userObject.password;
-    delete userObject.createAt;
-    delete userObject.updateAt;
-    // delete userObject._v;
-    delete userObject.tokens;
+    const token = jwt.sign(
+      { _id: user._id.toString() },
+      process.env.JWT_SECRET,
+      {
+        expiresIn: "7d",
+      },
+    );
 
-    return userObject;
-}
-const User = mongoose.model("User",userSchema);
+    user.tokens = user.tokens.concat({ token });
+
+    await user.save();
+    
+    return token; 
+  } catch (error) {
+    throw new Error(error.message);
+  }
+};
+
+const User = mongoose.model("User", UserSchema);
 
 export default User;

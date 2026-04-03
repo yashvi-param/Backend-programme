@@ -1,12 +1,13 @@
-import dotenv from "dotenv"
-dotenv.config({path:"./.env"})
-import pkg from "cloudinary";
-const { v2: cloudinary } = pkg;
+import dotenv from "dotenv";
+
+dotenv.config({ path: "./.env" });
+
+import { v2 as cloudinary } from "cloudinary";
 
 cloudinary.config({
-    cloud_name:process.env.CLOUD_NAME,
-    api_key:process.env.API_KEY,
-    api_secret:process.env.API_SECRET
-})
+  cloud_name: process.env.CLOUD_NAME,
+  api_key: process.env.CLOUD_API,
+  api_secret: process.env.CLOUD_API_SECRET,
+});
 
 export default cloudinary;

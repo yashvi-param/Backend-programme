@@ -1,52 +1,59 @@
+import Joi from "joi";
 
-import joi from "joi";
+const UserSchema = Joi.object({
+  name: Joi.string()
+    .trim()
+    .min(3)
+    .messages({
+      "string.base": "Name must be in string format",
+      "string.empty": "Name is required",
+      "string.min": "Name must be at least 3 characters",
+    }),
 
-const UserSchema = joi.object({
-    name: joi.string()
-        .min(2)
-        .pattern(/^[A-Za-z ]+$/)
-        .trim()
-        .strict()
-        .messages({
-            "string.base": "name must be string format",
-            "string.empty": "name is required",
-            "string.min": "name must be atLeast 2 character long",
-        }),
-    email: joi.string()
-        .email()
-        .messages({
-            "string.empty": "email is required",
-            "string.email": "please enter a valid email address"
-        }),
-    password: joi.string()
-        .min(6)
-        .pattern(new RegExp('^[a-zA-Z0-9]{3,30}$'))
-        .messages({
-            "string.empty": "password is required",
-            "string.min": "password must be atLeast 6 character long",
-        }),
-    phone: joi.string()
-        .pattern(/^[0-9]{10}$/)
-        .messages({
-            "number.base": "phone must be a number",
-        }),
-    role: joi.string()
-        .valid("customer", "provider", "admin", "super_admin")
-        .optional()
-        .messages({
-            "string.empty": "role is required from any of these customer.",
-        }),
+  email: Joi.string()
+    .trim()
+    .email()
+    .messages({
+      "string.email": "Enter a valid email",
+      "string.empty": "Email is required",
+    }),
+
+  password: Joi.string()
+    .pattern(/^(?=.*[A-Za-z])(?=.*\d)[A-Za-z\d@#$%^&*!]{6,}$/)
+    .messages({
+      "string.pattern.base":"Password must be at least 6 characters and include letters and numbers",
+      "string.empty": "Password is required",
+    }),
+
+  phone: Joi.string()
+    .trim()
+    .pattern(/^[0-9]{10}$/)
+    .messages({
+      "string.pattern.base": "Phone must be exactly 10 digits",
+      "string.empty": "Phone is required",
+    }),
+
+  role: Joi.string()
+    .valid("user", "admin", "super admin")
+    .default("user")
 });
 
-export const createUserSchema = UserSchema.fork(["name", "email", "password", "phone"],
+
+export const createUserSchema = UserSchema.fork(
+  ["name", "email", "password", "phone"],
     (field) => field.required()
-        .messages({ "any.required": "{#label} is required" }) //label is for dynamic value
+        .messages({ "any.required": "{#label} is required" }) 
 );
-export const updateUserSchema = UserSchema
-    .fork(["name", "password", "phone"], (field) => field.optional())
-    .or("name", "password", "phone")
-    .messages({
-        "object.missing": "At least one field (name, password, phone) is required for update"
-    });
+
+export const updateUserSchema = UserSchema.fork(
+  ["name", "password", "phone"],
+  (fields) =>
+    fields.optional().messages({
+      "object.missing":
+        "name or password or phone any of these field is required when updating",
+    }),
+);
+
+
 
 export default UserSchema;
