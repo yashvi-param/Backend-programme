@@ -1,47 +1,37 @@
-import dotenv from "dotenv";
-dotenv.config({ path: "./.env" });
-
 import express from "express";
+import dotenv from "dotenv";
 
-import HttpError from "./middleware/HttpError.js";
 import connectDB from "./config/db.js";
-
+import HttpError from "./middleware/HttpError.js";
 import userRoutes from "./routes/userRoutes.js";
 import adminRoutes from "./routes/adminRoutes.js";
 
+dotenv.config({ path: "./.env" });
 
 const app = express();
 
 app.use(express.json());
 
-// Routes
-app.use("/users", userRoutes);
-app.use("/admin",adminRoutes);
+app.use("/user", userRoutes);
 
+app.use("/admin", adminRoutes);
 
 app.get("/", (req, res) => {
-  res.json("Hello from server");
+  res.status(200).json("Hello From Server");
 });
 
-
-// 404 handler
 app.use((req, res, next) => {
-  next(new HttpError("Requested route not found", 404));
+  next(new HttpError("requested routes not found", 404));
 });
 
-
-// Error middleware
 app.use((error, req, res, next) => {
-
   if (res.headersSent) {
     return next(error);
   }
-
-  res.status(error.statusCode || 500).json({
-    message: error.message || "Internal server error",
-  });
+  res
+    .status(error.statusCode || 500)
+    .json({ message: error.message || "Internal server error" });
 });
-
 
 async function startServer() {
   try {
@@ -50,7 +40,7 @@ async function startServer() {
     const port = process.env.PORT || 5000;
 
     app.listen(port, () => {
-      console.log(`Server running on port ${port}`);
+      console.log(`Server Running On Port ${port}`);
     });
   } catch (error) {
     console.log(error.message);

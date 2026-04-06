@@ -1,69 +1,58 @@
-import User from "../models/User.js";
-import HttpError from "../middleware/HttpError.js";
 
-// CREATE USER
+import HttpError from "../middleware/HttpError.js";
+import User from "../model/userModel.js";
+import cloudinary from "../config/cloudinary.js";
+
 const add = async (req, res, next) => {
   try {
-    const { name, email, password, phone } = req.body;
+    const { name, email, password, role, phone } = req.body;
 
-     const newUser = {
+    const newUser = {
       name,
       email,
       password,
+      role,
       phone,
       profilePic: req.file ? req.file.path : "undefined",
-      cloudinaryId: req.file ? req.file.fileName : "undefined",
+      cloudinaryId: req.file ? req.file.filename : "undefined",
     };
+
+    console.log("cloudinaryId", newUser.cloudinaryId);
 
     const user = new User(newUser);
 
-    const token = await user.generateAuthToken();
+    await user.save();
 
-    
-    res.status(201).json({
-      success: true,
-      user,
-      token
-    });
+    res.status(201).json({ success: true, user });
   } catch (error) {
     next(new HttpError(error.message, 500));
   }
 };
 
-
-// LOGIN USER
 const login = async (req, res, next) => {
   try {
     const { email, password } = req.body;
 
     const user = await User.findByCredentials(email, password);
 
+    const token = await user.generateAuthToken();
+
     if (!user) {
-      return next(new HttpError("unable to login", 400));
+      return next(new HttpError("unable to login"));
     }
 
-     const token = await user.generateAuthToken();
-
-    res.status(200).json({
-      success: true,
-      message: "Login successful",
-      user,
-      token
-    });
-
+    res.status(200).json({ success: true, user, token });
   } catch (error) {
     next(new HttpError(error.message, 500));
   }
 };
 
-
-// PROTECTED ROUTE
 const authLogin = async (req, res, next) => {
   try {
     const user = req.user;
 
     if (!user) {
-      return next(new HttpError("unable to login", 401));
+      return next(new HttpError("user not found", 404));
     }
 
     res.status(200).json({ success: true, user });
@@ -71,7 +60,6 @@ const authLogin = async (req, res, next) => {
     next(new HttpError(error.message, 500));
   }
 };
-
 
 const logOut = async (req, res, next) => {
   try {
@@ -89,7 +77,6 @@ const logOut = async (req, res, next) => {
   }
 };
 
-
 const logOutAll = async (req, res, next) => {
   try {
     req.user.tokens = [];
@@ -104,7 +91,6 @@ const logOutAll = async (req, res, next) => {
     next(new HttpError(error.message, 500));
   }
 };
-
 
 const allUser = async (req, res, next) => {
   try {
@@ -121,7 +107,6 @@ const allUser = async (req, res, next) => {
     next(new HttpError(error.message, 500));
   }
 };
-
 
 const update = async (req, res, next) => {
   try {
@@ -143,6 +128,14 @@ const update = async (req, res, next) => {
 
     updates.forEach((update) => (user[update] = req.body[update]));
 
+    if (req.file) {
+      await cloudinary.uploader.destroy(user.cloudinaryId);
+
+      user.profilePic = req.file.path;
+
+      user.cloudinaryId = req.file.filename;
+    }
+
     await user.save();
 
     res
@@ -153,13 +146,13 @@ const update = async (req, res, next) => {
   }
 };
 
-
-
 const deleteUser = async (req, res, next) => {
   try {
     const user = req.user;
 
     await User.deleteOne(user);
+
+    await cloudinary.uploader.destroy(user.cloudinaryId);
 
     res
       .status(200)
@@ -169,5 +162,13 @@ const deleteUser = async (req, res, next) => {
   }
 };
 
-
-export default { add, login, authLogin, logOut, logOutAll,allUser,  update, deleteUser };
+export default {
+  add,
+  login,
+  authLogin,
+  logOut,
+  logOutAll,
+  allUser,
+  update,
+  deleteUser,
+};

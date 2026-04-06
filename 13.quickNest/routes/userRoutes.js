@@ -1,45 +1,46 @@
 
 import express from "express";
 
-import userController from "../controllers/userController.js";
-
-import registerSchema from "../validation/UserSchema.js";
-
+import userController from "../controller/userController.js";
 import validate from "../middleware/validate.js";
+import {
+  createUserSchema,
+  updateUserSchema,
+} from "../validation/userSchema.js";
 import auth from "../middleware/auth.js";
-import checkRole from "../middleware/checkRole.js";
 import uploads from "../middleware/upload.js";
-
+import checkRole from "../middleware/checkRole.js";
 
 const router = express.Router();
 
-// ADD USER
-router.post("/add", validate(registerSchema),uploads.single("profilePic"), userController.add);
+router.post(
+  "/add",
+  uploads.single("profilePic"),
+  validate(createUserSchema),
+  userController.add,
+);
 
-// LOGIN USER
 router.post("/login", userController.login);
 
-
-// PROTECTED
 router.get("/authLogin", auth, userController.authLogin);
-
 
 router.post("/logOut", auth, userController.logOut);
 
-
 router.post("/logOutAll", auth, userController.logOutAll);
 
-
 router.get(
-  "/allUser",
+  "/getAll",
   auth,
   checkRole("admin", "super_admin"),
-  userController.allUser,
+  userController.getAll,
 );
 
-
-router.patch("/update", auth, userController.update);
-
+router.patch(
+  "/update",
+  uploads.single("profilePic"),
+  auth,
+  userController.update,
+);
 
 router.delete("/delete", auth, userController.deleteUser);
 

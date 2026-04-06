@@ -1,5 +1,5 @@
 import HttpError from "../middleware/HttpError.js";
-import User from "../models/User.js";
+import User from "../model/userModel.js";
 
 const updateUserData = async (req, res, next) => {
   try {
@@ -26,7 +26,7 @@ const updateUserData = async (req, res, next) => {
     const isValid = updates.every((field) => allowedField.includes(field));
 
     if (!isValid) {
-      return next(new HttpError("only allowed field can be updated", 400));
+      return next(new HttpError("only allow field can updated", 400));
     }
 
     updates.forEach((update) => (user[update] = req.body[update]));
@@ -35,7 +35,7 @@ const updateUserData = async (req, res, next) => {
 
     res
       .status(200)
-      .json({ success: true, message: "user data updated successfully", user });
+      .json({ success: true, message: "user update successfully", user });
   } catch (error) {
     next(new HttpError(error.message, 500));
   }
@@ -49,7 +49,7 @@ const deleteUser = async (req, res, next) => {
 
     res
       .status(200)
-      .json({ success: true, message: "user data deleted successfully" });
+      .json({ success: true, message: "user deleted successfully" });
   } catch (error) {
     next(new HttpError(error.message, 500));
   }
