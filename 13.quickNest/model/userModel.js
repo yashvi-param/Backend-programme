@@ -1,87 +1,73 @@
 import mongoose from "mongoose";
-import bcrypt from "bcryptjs";
+import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
 
-const UserSchema = new mongoose.Schema(
+const userSchema = mongoose.Schema(
   {
     name: {
       type: String,
       required: true,
       trim: true,
     },
-
     email: {
       type: String,
       required: true,
+      unique: true,
       trim: true,
-      unique: true, 
     },
-
     password: {
       type: String,
       required: true,
     },
-
     phone: {
       type: Number,
       required: true,
     },
-
     role: {
       type: String,
       enum: ["customer", "provider", "admin", "super-admin"],
       default: "customer",
     },
-
     profilePic: {
       type: String,
     },
-    
     cloudinaryId: {
       type: String,
     },
-
     isVerified: {
       type: Boolean,
       default: false,
     },
-    
-    tokens:[
+    tokens: [
       {
-        token:{
+        token: {
           type: String,
           required: true,
         },
       },
     ],
   },
-  { timestamps: true }
+  { timestamps: true },
 );
 
-
-// Hash Password
-UserSchema.pre("save", async function () {
-  const user = this;
-
-  if (user.isModified("password")) {
-   user.password = await bcrypt.hash(user.password, 8);
+userSchema.pre("save", async function () {
+  if (this.isModified("password")) {
+    this.password = await bcrypt.hash(this.password, 8);
   }
 });
 
-
-// Login Logic
-UserSchema.statics.findByCredentials = async function (email, password) {
+userSchema.statics.findByCredentials = async function (email, password) {
   try {
     const user = await this.findOne({ email });
 
     if (!user) {
-      throw new Error("Invalid email or password");
+      throw new Error("Unable to login");
     }
 
-    const isMatched = await bcrypt.compare(password, user.password);
+    const isMatch = await bcrypt.compare(password, user.password);
 
-    if (!isMatched) {
-      throw new Error("Invalid email or password");
+    if (!isMatch) {
+      throw new Error("Unable to login");
     }
 
     return user;
@@ -90,30 +76,47 @@ UserSchema.statics.findByCredentials = async function (email, password) {
   }
 };
 
-
-// Generate Token
-UserSchema.methods.generateAuthToken = async function () {
+userSchema.methods.generateAuthToken = async function () {
   try {
     const user = this;
 
     const token = jwt.sign(
       { _id: user._id.toString() },
       process.env.JWT_SECRET,
-      {
-        expiresIn: "7d",
-      },
     );
+
+    if (!token) {
+      throw new Error("Failed to generate auth token");
+    }
 
     user.tokens = user.tokens.concat({ token });
 
     await user.save();
-    
-    return token; 
+
+    return token;
   } catch (error) {
     throw new Error(error.message);
   }
 };
 
-const User = mongoose.model("User", UserSchema);
+userSchema.methods.toJSON = function () {
+  const user = this;
+
+  const userObject = user.toObject();
+
+  delete userObject.password;
+
+  delete userObject.tokens;
+
+  delete userObject.createdAt;
+
+  delete userObject.updatedAt;
+
+  delete userObject.__v;
+
+  return userObject;
+};
+
+const User = mongoose.model("User", userSchema);
 
 export default User;

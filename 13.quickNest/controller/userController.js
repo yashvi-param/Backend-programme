@@ -1,18 +1,18 @@
-
-import HttpError from "../middleware/HttpError.js";
-import User from "../model/userModel.js";
 import cloudinary from "../config/cloudinary.js";
+import HttpError from "../middleware/HttpError.js";
+import uploads from "../middleware/upload.js";
+import User from "../model/userModel.js";
 
 const add = async (req, res, next) => {
   try {
-    const { name, email, password, role, phone } = req.body;
+    const { name, email, password, phone, role } = req.body;
 
     const newUser = {
       name,
       email,
       password,
-      role,
       phone,
+      role,
       profilePic: req.file ? req.file.path : "undefined",
       cloudinaryId: req.file ? req.file.filename : "undefined",
     };
@@ -25,7 +25,7 @@ const add = async (req, res, next) => {
 
     res.status(201).json({ success: true, user });
   } catch (error) {
-    next(new HttpError(error.message, 500));
+    next(error);
   }
 };
 
@@ -38,12 +38,14 @@ const login = async (req, res, next) => {
     const token = await user.generateAuthToken();
 
     if (!user) {
-      return next(new HttpError("unable to login"));
+      return next(new HttpError("Unable to login ", 400));
     }
 
-    res.status(200).json({ success: true, user, token });
+    res
+      .status(200)
+      .json({ success: true, message: "Login Successfully", user, token });
   } catch (error) {
-    next(new HttpError(error.message, 500));
+    next(new HttpError(error.message, 404));
   }
 };
 
@@ -52,26 +54,29 @@ const authLogin = async (req, res, next) => {
     const user = req.user;
 
     if (!user) {
-      return next(new HttpError("user not found", 404));
+      return next(new HttpError("Unable to login"));
     }
 
-    res.status(200).json({ success: true, user });
+    res.status(201).json({ success: true, user });
   } catch (error) {
-    next(new HttpError(error.message, 500));
+    next(new HttpError(error.message, 404));
   }
 };
 
 const logOut = async (req, res, next) => {
   try {
+    const token = req.token; 
+
     req.user.tokens = req.user.tokens.filter((t) => {
-      return t.token != req.token;
+      return t.token !== token;
     });
 
     await req.user.save();
 
-    res
-      .status(200)
-      .json({ success: true, message: "user logOut successfully" });
+    res.status(200).json({
+      success: true,
+      message: "User LogOut Successfully",
+    });
   } catch (error) {
     next(new HttpError(error.message, 500));
   }
@@ -83,28 +88,27 @@ const logOutAll = async (req, res, next) => {
 
     await req.user.save();
 
-    res.status(200).json({
-      success: true,
-      message: "user logOut from all device successfully",
-    });
+    res
+      .status(200)
+      .json({ success: true, message: "User Logout from all device" });
   } catch (error) {
-    next(new HttpError(error.message, 500));
+    next(new HttpError(error.message, 404));
   }
 };
 
-const allUser = async (req, res, next) => {
+const getAll = async (req, res, next) => {
   try {
     const users = await User.find({});
 
     if (users.length === 0) {
-      res.status(200).json({ success: true, message: "no user data found" });
+      res
+        .status(200)
+        .json({ success: true, message: "No any users are there" });
     }
 
-    res
-      .status(200)
-      .json({ success: true, message: "all user data fetched", users });
+    res.status(200).json({ success: true, message: "all users", users });
   } catch (error) {
-    next(new HttpError(error.message, 500));
+    next(new HttpError(error.message, 404));
   }
 };
 
@@ -118,12 +122,12 @@ const update = async (req, res, next) => {
 
     const updates = Object.keys(req.body);
 
-    const allowedFields = ["name", "password", "phone"];
+    const allowedField = ["name", "password", "phone"];
 
-    const isValid = updates.every((field) => allowedFields.includes(field));
+    const isValid = updates.every((field) => allowedField.includes(field));
 
     if (!isValid) {
-      return next(new HttpError("only allowed field can be updated", 400));
+      return next(new HttpError("only allowed fields can be updated", 400));
     }
 
     updates.forEach((update) => (user[update] = req.body[update]));
@@ -140,9 +144,9 @@ const update = async (req, res, next) => {
 
     res
       .status(200)
-      .json({ success: true, message: "user Data updated successfully", user });
+      .json({ success: true, message: "user update successfully", user });
   } catch (error) {
-    next(new HttpError(error.message));
+    next(new HttpError(error.message, 404));
   }
 };
 
@@ -156,7 +160,7 @@ const deleteUser = async (req, res, next) => {
 
     res
       .status(200)
-      .json({ success: true, message: "user deleted successfully" });
+      .json({ success: true, message: "user delete successfully" });
   } catch (error) {
     next(new HttpError(error.message, 500));
   }
@@ -168,7 +172,7 @@ export default {
   authLogin,
   logOut,
   logOutAll,
-  allUser,
+  getAll,
   update,
   deleteUser,
 };
