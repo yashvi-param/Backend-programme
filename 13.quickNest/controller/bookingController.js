@@ -1,42 +1,46 @@
+import Service from "../model/Services.js";
+
 import HttpError from "../middleware/HttpError.js";
 import Booking from "../model/Booking.js";
-import Service from "../model/service.js";
 
 const createBooking = async (req, res, next) => {
   try {
-    const { serviceId, bookingDate, timeSlot, note } = req.body;
+    const { serviceId, bookingDate, timeSlot, notes } = req.body;
 
     const userId = req.user._id;
 
     const service = await Service.findById(serviceId);
+
     if (!service) {
-      return next(new HttpError("Service not Founded", 404));
+      return next(new HttpError("service not found", 404));
     }
 
     if (!service.isActive) {
       return next(
         new HttpError(
-          "Service is currently not active please try again some time",
+          "service is currently not active please try again after some time",
           400,
         ),
       );
     }
 
-    const startOfDate = new Date(bookingDate);
-    startOfDate.setHours(0, 0, 0, 0);
+    const startOfDay = new Date(bookingDate);
+    startOfDay.setHours(0, 0, 0, 0);
 
-    const endOfDate = new Date(bookingDate);
-    endOfDate.setHours(23, 59, 59, 999);
+    const endOfDay = new Date(bookingDate);
+    endOfDay.setHours(23, 59, 59, 999);
 
     const existingBooking = await Booking.findOne({
       serviceId,
-      bookingDate: { $gte: startOfDate, $lt: endOfDate },
-      status: { $in: ["pending", "confirm"] },
+      bookingDate: { $gte: startOfDay, $lt: endOfDay },
+      status: { $in: ["pending", "confirmed"] },
     });
+
+    console.log("service", existingBooking);
 
     if (existingBooking) {
       return next(
-        new HttpError("Service Already booked for this time slot", 409),
+        new HttpError("service already booked for this time slot ", 409),
       );
     }
 
@@ -45,23 +49,35 @@ const createBooking = async (req, res, next) => {
       serviceId,
       bookingDate: new Date(bookingDate),
       timeSlot,
-      note,
+      notes,
       totalPrice: service.price,
     });
 
     await newBooking.save();
 
-    await newBooking.populate("serviceId");
-    await newBooking.populate("userId");
+    await newBooking.populate([
+      {
+        path: "serviceId",
+        select: "name price duration",
+      },
+      {
+        path: "userId",
+        select: "name email phone",
+      },
+    ]);
+
+    // await newBooking.populate("serviceId");
+
+    // await newBooking.populate("userId");
 
     res.status(201).json({
       success: true,
-      message: "Booking created successfully",
-      booking: newBooking,
+      message: "service booked successfully",
+      newBooking,
     });
   } catch (error) {
     next(new HttpError(error.message, 500));
   }
 };
 
-export default {createBooking}
+export default { createBooking };
