@@ -1,9 +1,47 @@
+
 import express from "express";
-import createUser from "../controllers/userController.js";
+
+import userController from "../controller/userController.js";
+import validate from "../middleware/validate.js";
+import {
+  createUserSchema,
+  updateUserSchema,
+} from "../validation/userSchema.js";
+import auth from "../middleware/auth.js";
+import uploads from "../middleware/upload.js";
+import checkRole from "../middleware/checkRole.js";
 
 const router = express.Router();
 
-// ADD USER
-router.post("/add", createUser);
+router.post(
+  "/add",
+  uploads.single("profilePic"),
+  validate(createUserSchema),
+  userController.add,
+);
+
+router.post("/login", userController.login);
+
+router.get("/authLogin", auth, userController.authLogin);
+
+router.post("/logOut", auth, userController.logOut);
+
+router.post("/logOutAll", auth, userController.logOutAll);
+
+router.get(
+  "/getAll",
+  auth,
+  checkRole("admin", "super_admin"),
+  userController.getAll,
+);
+
+router.patch(
+  "/update",
+  uploads.single("profilePic"),
+  auth,
+  userController.update,
+);
+
+router.delete("/delete", auth, userController.deleteUser);
 
 export default router;
