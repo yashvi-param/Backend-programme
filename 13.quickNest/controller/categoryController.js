@@ -1,35 +1,37 @@
-
 import HttpError from "../middleware/HttpError.js";
+import Category from "../model/Category.js";
 
-import Category from "../model/category.js";
 
 const add = async (req, res, next) => {
   try {
     const { name, description } = req.body;
 
+    const existingCategory = await Category.findOne({ name });
+
+    if (existingCategory) {
+      return next(new HttpError("category already existed", 400));
+    }
+
     const newCategory = new Category({
       name,
       description,
     });
-
     await newCategory.save();
-    res.status(201).json({
-      success: true,
-      message: "category create successfully",
-      newCategory,
-    });
+    res
+      .status(201)
+      .json({ success: true, message: "new category added", newCategory });
   } catch (error) {
     next(new HttpError(error.message, 500));
   }
 };
 
+
 const getAll = async (req, res, next) => {
   try {
-    const categories = await Category.find({});
-
+    const categories = await Category.find().populate("services");
     res.status(200).json({
       success: true,
-      message: "categories fetched successfully",
+      message: "all categories retrieved",
       categories,
     });
   } catch (error) {
@@ -37,11 +39,12 @@ const getAll = async (req, res, next) => {
   }
 };
 
+
 const getById = async (req, res, next) => {
   try {
-    const id = req.params.id;
+    const { id } = req.params;
 
-    const category = await Category.findById(id);
+    const category = await Category.findById(id).populate("services");
 
     if (!category) {
       return next(new HttpError("category not found", 404));
@@ -49,7 +52,7 @@ const getById = async (req, res, next) => {
 
     res.status(200).json({
       success: true,
-      message: "category fetched successfully",
+      message: "category retrieved",
       category,
     });
   } catch (error) {
@@ -57,14 +60,23 @@ const getById = async (req, res, next) => {
   }
 };
 
+
 const update = async (req, res, next) => {
   try {
-    const id = req.params.id;
+    const { id } = req.params;
 
-    const category = await Category.findById(id);
+    let category = await Category.findById(id);
 
     if (!category) {
       return next(new HttpError("category not found", 404));
+    }
+
+  
+    if (
+      req.user.role !== "admin" &&
+      req.user.role !== "super_admin"
+    ) {
+      return next(new HttpError("unauthorized access", 401));
     }
 
     const updates = Object.keys(req.body);
@@ -73,7 +85,15 @@ const update = async (req, res, next) => {
     const isValid = updates.every((field) => allowedFields.includes(field));
 
     if (!isValid) {
-      return next(new HttpError("only allowed fields can be updated", 400));
+      return next(new HttpError("only allowed field can be updated", 400));
+    }
+
+  
+    if (req.body.name && req.body.name !== category.name) {
+      const existingCategory = await Category.findOne({ name: req.body.name });
+      if (existingCategory) {
+        return next(new HttpError("category name already exists", 400));
+      }
     }
 
     updates.forEach((update) => (category[update] = req.body[update]));
@@ -92,13 +112,15 @@ const update = async (req, res, next) => {
 
 const deleteCategory = async (req, res, next) => {
   try {
-    const id = req.params.id;
+    const { id } = req.params;
 
-    const category = await Category.findByIdAndDelete(id);
+    const category = await Category.findById(id);
 
     if (!category) {
       return next(new HttpError("category not found", 404));
     }
+
+    await Category.findByIdAndDelete(id);
 
     res.status(200).json({
       success: true,

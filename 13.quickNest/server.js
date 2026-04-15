@@ -2,80 +2,88 @@ import dotenv from "dotenv";
 dotenv.config({ path: "./.env" });
 
 import express from "express";
-import connectDB from "./config/db.js";
 
 import HttpError from "./middleware/HttpError.js";
+import connectDB from "./config/db.js";
 
-import UserRouter from "./router/UserRoutes.js";
-import adminRouter from "./router/adminRoutes.js";
-import bookingRouter from "./router/bookingRouter.js"
-
+import userRouter from "./routes/userRoutes.js";
+import adminRouter from "./routes/adminRoutes.js";
+import bookingRouter from "./routes/bookingRoutes.js";
 
 const app = express();
 
 app.use(express.json());
 
-app.use("/user", UserRouter);
-app.use("/admin", adminRouter);
-app.use("/booking",bookingRouter)
+app.use("/user", userRouter);
 
-app.get("/", (req, res, next) => {
-  res.status(200).json("Hello from Server....!");
+app.use("/admin", adminRouter);
+
+app.use("/booking", bookingRouter);
+
+app.get("/", (req, res) => {
+  res.json("hello from server");
 });
 
 app.use((req, res, next) => {
-  return next(new HttpError("Requested Route not Founded...!"));
+  return next(new HttpError("requested route not found", 404));
 });
 
 app.use((error, req, res, next) => {
   if (res.headersSent) {
-    return next(error);
+    next(error);
   }
-
   res
-    .status(error.StatusCode || 500)
-    .json({ message: error.message } || "Internal Server Error");
+    .status(error.statusCode || 500)
+    .json({ message: error.message } || "internal server error");
 });
 
 const port = process.env.PORT || 5000;
+
+console.log("port", port);
 
 async function startServer() {
   try {
     await connectDB();
 
     app.listen(port, () => {
-      console.log(`Server running on Port ${port}`);
+      console.log(`server listening on port ${port}`);
     });
   } catch (error) {
-    throw new Error(error.message);
+    console.log(error);
     process.exit(1);
   }
 }
 
 startServer();
 
+// import Service from "./model/Services.js";
+// import Category from "./model/Category.js";
+
+// relationship between service and category
+
 // const check = async () => {
-//   //using Manual
+//   // using manually
+//   // const service = await Service.findById("69d48aa2627ce6307336a653");
 
-//   // const service = await Service.findById("69d65ed232cbb03127ee8503")
+//   // const category = await Category.findById(service.category);
 
-//   //   const category = await Category.findById(Service.category)
+//   // console.log(category);
 
-//   //  console.log("Category",category)
+//   // using populate
 
-//   //using Populate
+//   //  const service = await Service.findById("69d48aa2627ce6307336a653").populate(
+//   //   "category","name -_id",
+//   // );
 
-//   // const service = await Service.findById("69d67a637c8156122afc94b5").populate("category","name")
+//   // console.log(service);
 
-//   // console.log("Services",service)
+//   // now using virtual finding the all service in category
 
-//   //using Virtual
-
-//   const category = await Category.findById("69d65eba32cbb03127ee84fa").populate(
-//     "service","name description price -_id -category"
+//   const category = await Category.findById("69d33796f0f31525cbe41138").populate(
+//     "services", "name description price -_id -category"
 //   );
 
-//   console.log(category.service);
+//   console.log(category.services);
 // };
 
 // check();
