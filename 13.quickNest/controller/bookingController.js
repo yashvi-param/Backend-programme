@@ -1,46 +1,42 @@
-import Service from "../model/Services.js";
-
 import HttpError from "../middleware/HttpError.js";
 import Booking from "../model/Booking.js";
+import Service from "../model/service.js";
 
 const createBooking = async (req, res, next) => {
   try {
-    const { serviceId, bookingDate, timeSlot, notes } = req.body;
+    const { serviceId, bookingDate, timeSlot, note } = req.body;
 
     const userId = req.user._id;
 
     const service = await Service.findById(serviceId);
-
     if (!service) {
-      return next(new HttpError("service not found", 404));
+      return next(new HttpError("Service not Founded", 404));
     }
 
     if (!service.isActive) {
       return next(
         new HttpError(
-          "service is currently not active please try again after some time",
+          "Service is currently not active please try again some time",
           400,
         ),
       );
     }
 
-    const startOfDay = new Date(bookingDate);
-    startOfDay.setHours(0, 0, 0, 0);
+    const startOfDate = new Date(bookingDate);
+    startOfDate.setHours(0, 0, 0, 0);
 
-    const endOfDay = new Date(bookingDate);
-    endOfDay.setHours(23, 59, 59, 999);
+    const endOfDate = new Date(bookingDate);
+    endOfDate.setHours(23, 59, 59, 999);
 
     const existingBooking = await Booking.findOne({
       serviceId,
-      bookingDate: { $gte: startOfDay, $lt: endOfDay },
-      status: { $in: ["pending", "confirmed"] },
+      bookingDate: { $gte: startOfDate, $lt: endOfDate },
+      status: { $in: ["pending", "confirm"] },
     });
-
-    console.log("service", existingBooking);
 
     if (existingBooking) {
       return next(
-        new HttpError("service already booked for this time slot ", 409),
+        new HttpError("Service Already booked for this time slot", 409),
       );
     }
 
@@ -49,38 +45,26 @@ const createBooking = async (req, res, next) => {
       serviceId,
       bookingDate: new Date(bookingDate),
       timeSlot,
-      notes,
+      note,
       totalPrice: service.price,
     });
 
     await newBooking.save();
 
-    await newBooking.populate([
-      {
-        path: "serviceId",
-        select: "name price duration",
-      },
-      {
-        path: "userId",
-        select: "name email phone",
-      },
-    ]);
-
-    // await newBooking.populate("serviceId");
-
-    // await newBooking.populate("userId");
+    await newBooking.populate("serviceId");
+    await newBooking.populate("userId");
 
     res.status(201).json({
       success: true,
-      message: "service booked successfully",
-      newBooking,
+      message: "Booking created successfully",
+      booking: newBooking,
     });
   } catch (error) {
     next(new HttpError(error.message, 500));
   }
 };
 
-const getAllBookings = async (req, res, next) => {
+const getAllBooking = async (req, res, next) => {
   try {
     let bookings;
 
@@ -88,125 +72,98 @@ const getAllBookings = async (req, res, next) => {
 
     if (role === "admin" || role === "super_admin") {
       bookings = await Booking.find({}).populate([
-        { path: "serviceId", select: "name price description duration" },
-        {
-          path: "userId",
-          select: "name email phone",
-        },
+        { path: "serviceId", select: "name price description duration -_id" },
+        { path: "userId", select: "name email phone -_id" },
       ]);
     } else if (role === "customer") {
-      bookings = await Booking.find({ userId: req.user._id }).populate(
-        "serviceId",
-        "name price duration description",
-      );
+      bookings = await Booking.find({ userId: req.user._id });
     } else {
-      return next(new HttpError("unAuthorized access", 401));
+      return next(new HttpError("UnAuthorized", 401));
     }
 
-    if (bookings.length === 0) {
-      return res
-        .status(200)
-        .json({ success: true, message: "no booking data found" });
+    if (bookings.length == 0) {
+      res.status(200).json({ success: true, message: "No Booking Data Found" });
     }
 
     res.status(200).json({
       success: true,
-      message: "all bookings fetched successfully",
+      message: "Booking Data founded SuccessFully...",
       bookings,
     });
   } catch (error) {
-    next(new HttpError(error.message, 500));
+    next(new HttpError(error.message));
   }
 };
 
-const getBookingByServiceId = async (req, res, next) => {
+const getByServiceId = async (req, res, next) => {
   try {
     let bookings;
 
     let role = req.user.role;
 
-    let serviceId = req.params.id;
-
-    console.log("service id", serviceId);
+    const serviceId = req.params.id;
 
     if (role === "admin" || role === "super_admin") {
       bookings = await Booking.find({ serviceId }).populate([
-        { path: "serviceId", select: "name price duration" },
-        {
-          path: "userId",
-          select: "name email phone",
-        },
+        { path: "serviceId", select: "name price description duration -_id" },
+        { path: "userId", select: "name email phone" },
       ]);
-
-      console.log("admin data", bookings);
     } else if (role === "customer") {
       bookings = await Booking.find({
         userId: req.user._id,
         serviceId: serviceId,
-      }).populate("serviceId", "name price duration");
-    } else {
-      return next(new HttpError("unAuthorized access", 401));
+      }).populate("serviceId", "name price description duration -_id");
     }
 
-    if (bookings.length === 0) {
-      return res
-        .status(200)
-        .json({ success: true, message: "no booking data found" });
+    if (bookings.length == 0) {
+      res.status(200).json({ success: true, message: "No Booking Data Found" });
     }
 
-    res.status(200).json({
-      success: true,
-      message: "all bookings fetched successfully",
-      bookings,
-    });
+    res
+      .status(200)
+      .json({ success: true, message: "All Services....!", bookings });
   } catch (error) {
-    next(new HttpError(error.message, 500));
+    next(new HttpError(error.message));
   }
 };
 
 const getBookingById = async (req, res, next) => {
   try {
-    let bookings;
-
-    let bookingId = req.params.id;
-
+    let booking;
     let userId = req.user._id;
+    let bookingId = req.params.id;
 
     let role = req.user.role;
 
     if (role === "admin" || role === "super_admin") {
-      bookings = await Booking.findById(bookingId).populate([
+      booking = await Booking.findById(bookingId).populate([
         { path: "serviceId", select: "name price duration" },
         {
           path: "userId",
           select: "name email phone",
         },
       ]);
-    } else {
-      bookings = await Booking.findById(bookingId).populate(
-        "serviceId",
-        "name price duration",
-      );
     }
 
-    if (!bookings) {
-      return next(new HttpError("no booking data found", 404));
-    }
+    booking = await Booking.findById(bookingId).populate(
+      "serviceId",
+      "name price duration",
+    );
 
     if (
       role === "customer" &&
-      userId.toString() !== bookings.userId.toString()
+      booking.userId.toString() !== userId.toString()
     ) {
-      return next(new HttpError("unAuthorized access", 403));
+      return next(new HttpError("UnAuthorized Access", 403));
     }
 
-    res.status(200).json({
-      success: true,
-      message: "booking data fetched successfully",
-      bookings,
-    });
+    if (!booking) {
+      return next(new HttpError("No Booking data found", 404));
+    }
+
+    res.status(200).json({ success: true, message: "Bookings..!", booking });
   } catch (error) {
-    next(new HttpError(error.message, 500));
+    next(new HttpError(error.message));
   }
 };
 
@@ -214,235 +171,46 @@ const bookingByUserId = async (req, res, next) => {
   try {
     let booking;
 
-    let loginUser = req.user._id;
+    let userId = req.params.id || req.params._id;
 
-    console.log("userId", loginUser);
+    booking = await Booking.find({ userId }).populate(
+      "serviceId",
+      "name price description duration -_id",
+    );
 
-    let userId = req.params.id;
-
-    if (loginUser) {
-      booking = await Booking.find({ userId: loginUser });
+    if (!booking) {
+      return next(new HttpError("No Booking Data Found", 404));
     }
 
-    if (userId) {
-      booking = await Booking.find({ userId });
-    }
-
-    if (!booking.length) {
-      return next(new HttpError("no booking data found", 404));
-    }
-
-    res.status(200).json({
-      success: true,
-      message: "booking data fetched successfully",
-      booking,
-    });
+    res.status(200).json({ success: true, booking });
   } catch (error) {
-    next(new HttpError(error.message, 500));
+    next(new HttpError(error.message));
   }
 };
 
-const confirmBookingStatus = async (req, res, next) => {
+const availableTimeSlot = async (req, res, next) => {
   try {
+    const { serviceId, bookingDate } = req.query;
 
-    const id = req.params.id
-
-
-
-    const booking = await Booking.findById(id)
-
-    if (!booking) {
-      return next(new HttpError("no booking data found", 404));
-    }
-
-    if (booking.status === "confirmed") {
-      return next(new HttpError("booking already confirmed", 400))
-    }
-
-    if (booking.status === "cancelled") {
-      return next(new HttpError("booking already cancelled", 400))
-    }
-
-    if (booking.status === "pending") {
-
-      booking.status = "confirmed"
-
-    }
-
-    await booking.save()
-
-    res.status(200).json({
-      success: true,
-      message: "booking status updated successfully",
-      booking,
-    });
-
-
-  } catch (error) {
-    next(new HttpError(error.message, 500));
-  }
-};
-
-const cancelBookingStatus = async (req, res, next) => {
-  try {
-
-
-    const id = req.params.id
-
-    const booking = await Booking.findById(id)
-    if (!booking) {
-      return next(new HttpError("no booking data found", 404));
-    }
-
-    if (booking.status === "cancelled") {
-      return next(new HttpError("booking already cancelled", 400))
-    }
-
-
-    if (booking.status === "completed") {
-
-      return next(new HttpError("booking already completed you can't cancel it", 400))
-
-    }
-
-    if (booking.status === "pending" || booking.status === "confirmed") {
-
-      booking.status = "cancelled"
-
-    }
-    await booking.save()
-
-    res.status(200).json({
-      success: true,
-      message: "booking cancelled successfully",
-      booking,
-    });
-
-
-  } catch (error) {
-    next(new HttpError(error.message, 500));
-  }
-}
-
-
-const completeBookingStatus = async (req, res, next) => {
-
-  try {
-
-    const id = req.params.id
-
-    const booking = await Booking.findById(id)
-
-    if (!booking) {
-      return next(new HttpError("no booking data found", 404));
-    }
-
-    if (booking.status === "completed") {
-      return next(new HttpError("booking already completed", 400))
-    }
-
-    if (booking.status === "cancelled") {
-
-      return next(new HttpError("booking already cancelled you can't complete it", 400))
-
-    }
-
-    if (booking.status === "pending" || booking.status === "confirmed") {
-      booking.status = "completed"
-    }
-
-    await booking.save()
-
-    res.status(200).json({
-      success: true,
-      message: "booking completed successfully",
-      booking,
-    });
-
-  } catch (error) {
-    next(new HttpError(error.message, 500));
-  }
-
-}
-
-
-// const availableTimeSlots = async (req, res, next) => {
-
-//   try {
-
-//     const { serviceId, bookingDate } = req.query
-
-//     const service = await Service.findById(serviceId)
-
-//     if (!service) {
-//       return next(new HttpError("service not found", 404));
-//     }
-
-//     const startOfDay = new Date(bookingDate);
-//     startOfDay.setHours(0, 0, 0, 0);
-
-//     const endOfDay = new Date(bookingDate);
-//     endOfDay.setHours(23, 59, 59, 999);
-
-//     const existingBookings = await Booking.find({
-//       serviceId,
-//       bookingDate: { $gte: startOfDay, $lt: endOfDay },
-//       status: { $in: ["pending", "confirmed"] },
-//     });
-
-//     const bookedTimeSlots = existingBookings.map((booking) => booking.timeSlot);
-
-//     const allTimeSlots = [
-//       "9:00-10:00",
-//       "10:00-11:00",
-//       "11:00-12:00",
-//       "12:00-13:00",
-//       "13:00-14:00",
-//     ];
-
-//     const availableTimeSlots = allTimeSlots.filter(
-//       (timeSlot) => !bookedTimeSlots.includes(timeSlot),
-//     );
-
-//     res.status(200).json({
-//       success: true,
-//       message: "available time slots fetched successfully",
-//       availableTimeSlots,
-//     });
-
-
-
-//   } catch (error) {
-//     next(new HttpError(error.message, 500));
-//   }
-// }
-
-
-const availableTimeSlots = async (req, res, next) => {
-
-  const { serviceId, bookingDate } = req.query
-
-  try {
-
-    const service = await Service.findById(serviceId)
+    const service = await Service.findById(serviceId);
 
     if (!service) {
-      return next(new HttpError("service not found", 404));
+      return next(new HttpError("Service Not Found...!", 404));
     }
 
-    const startOfDay = new Date(bookingDate);
-    startOfDay.setHours(0, 0, 0, 0);
+    const startOfDate = new Date(bookingDate);
+    startOfDate.setHours(0, 0, 0, 0);
 
-    const endOfDay = new Date(bookingDate);
-    endOfDay.setHours(23, 59, 59, 999);
+    const endOfDate = new Date(bookingDate);
+    endOfDate.setHours(23, 59, 59, 999);
 
     const existingBookings = await Booking.find({
       serviceId,
-      bookingDate: { $gte: startOfDay, $lt: endOfDay },
-      status: { $in: ["pending", "confirmed"] },
-    })
+      bookingDate: { $gte: startOfDate, $lt: endOfDate },
+      status: { $in: ["pending", "confirm"] },
+    });
 
-    const bookedTimeSlots = existingBookings.map((b) => b.timeSlot)
+    const bookedTimeSlots = existingBookings.map((b) => b.timeSlot);
 
     const allTimeSlots = [
       "9:00-10:00",
@@ -454,42 +222,144 @@ const availableTimeSlots = async (req, res, next) => {
       "15:00-16:00",
       "16:00-17:00",
       "17:00-18:00",
-    ]
+    ];
 
-    const availableTimeSlots = allTimeSlots.filter((b) => !bookedTimeSlots.includes(b))
+    const availableTimeSlots = allTimeSlots.filter(
+      (b) => !bookedTimeSlots.includes(b),
+    );
 
-    if (!availableTimeSlots.length) {
+    if (!availableTimeSlot.length) {
       return res.status(200).json({
         success: true,
-        message: "no available time slots",
-        availableTimeSlots: []
-      })
+        message: "No Available time Slots",
+        availableTimeSlot: [],
+      });
     }
-
 
     res.status(200).json({
       success: true,
-      message: "available time slots fetched successfully",
-      availableTimeSlots
-    })
-
+      message: "Available time Slots fetched successfully",
+      availableTimeSlot,
+    });
+  } catch (error) {
+    next(new HttpError(error.message));
   }
+};
 
+const confirmBooking = async (req, res, next) => {
+  try {
+    const id = req.params.id;
 
-  catch (error) {
-    next(new HttpError(error.message, 500));
+    const booking = await Booking.findById(id);
+
+    if (!booking) {
+      return next(new HttpError("No Booking Data Founded..!", 404));
+    }
+
+    if (booking.status === "confirm") {
+      return next(new HttpError("Booking Already Confirmed...!", 400));
+    }
+
+    if (booking.status === "cancel") {
+      return next(new HttpError("Booking Already Canceled...!", 400));
+    }
+
+    if (booking.status === "pending") {
+      booking.status = "confirm";
+    }
+
+    await booking.save();
+
+    res.status(200).json({
+      success: true,
+      message: "Booking status updated successfully",
+      booking,
+    });
+  } catch (error) {
+    next(new HttpError(error.message));
   }
-}
+};
 
-  export default {
-    createBooking,
-    getAllBookings,
-    getBookingByServiceId,
-    getBookingById,
-    bookingByUserId,
-    confirmBookingStatus,
-    cancelBookingStatus,
-    completeBookingStatus,
-    availableTimeSlots,
+const cancelBooking = async (req, res, next) => {
+  try {
+    const id = req.params.id;
 
-  };
+    const booking = await Booking.findById(id);
+
+    if (!booking) {
+      return next(new HttpError("No Booking Data Founded..!", 404));
+    }
+
+    if (booking.status === "cancel") {
+      return next(new HttpError("Booking Already Canceled...!", 400));
+    }
+
+    if (booking.status === "completed") {
+      return next(
+        new HttpError("Booing already completed you can't cancel it", 404),
+      );
+    }
+
+    if (booking === "pending" || booking === "confirmed") {
+      booking.status = "cancel";
+    }
+
+    await booking.save();
+
+    res.status(200).json({
+      success: true,
+      message: "Booking Cancel Successfully...!",
+      booking,
+    });
+  } catch (error) {
+    next(new HttpError(error.message));
+  }
+};
+
+const completeBooking = async (req, res, next) => {
+  try {
+    const id = req.params.id;
+
+    const booking = await Booking.findById(id);
+
+    if (!booking) {
+      return next(new HttpError("No Booking Data Founded..!", 404));
+    }
+
+    if (booking.status === "complete") {
+      return next(new HttpError("Booking already Completed", 400));
+    }
+
+    if (booking.status === "cancel") {
+      return next(
+        new HttpError("Booking Already cancelled you can't complete it", 400),
+      );
+    }
+
+    if (booking.status === "pending" || booking.status === "confirm") {
+      booking.status = "complete";
+    }
+
+    await booking.save();
+
+    res.status(200).json({
+      success: true,
+      message: "Booking Completed Successfully...!",
+      booking,
+    });
+  } catch (error) {
+    next(new HttpError(error.message));
+  }
+};
+
+export default {
+  createBooking,
+  getAllBooking,
+  getByServiceId,
+  getBookingById,
+  bookingByUserId,
+  availableTimeSlot,
+  confirmBooking,
+  cancelBooking,
+  completeBooking,
+};
