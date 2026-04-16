@@ -1,44 +1,47 @@
 import express from "express";
-import bookingController from "../controller/bookingController.js";
 import auth from "../middleware/auth.js";
+import bookingController from "../controller/bookingController.js";
 import checkRole from "../middleware/checkRole.js";
 
 const router = express.Router();
 
 router.post("/create", auth, bookingController.createBooking);
 
+router.get("/getallBookings", auth, bookingController.getAllBooking);
+router.get("/getByServiceId/:id", auth, bookingController.getByServiceId);
 
-router.get("/allBookings", auth, bookingController.getAllBookings);
+router.get("/getByUserId/:id", auth, bookingController.getBookingById);
 
-router.get(
-  "/allBookingByService/:id",
+//Booking Status
+
+router.post(
+  "/confirmBooking/:id",
   auth,
-  bookingController.getBookingByServiceId,
+  checkRole("admin", "super_admin"),
+  bookingController.confirmBooking,
+);
+router.post(
+  "/cancelBooking/:id",
+  auth,
+  checkRole("admin", "super_admin"),
+  bookingController.cancelBooking,
+);
+router.post(
+  "/completeBooking/:id",
+  auth,
+  checkRole("admin", "super_admin"),
+  bookingController.completeBooking,
 );
 
-router.get("/loginUser", auth, bookingController.bookingByUserId);
+router.get("/timeSlot", auth, bookingController.availableTimeSlot);
 
-router.post("/confirmBooking/:id", auth, checkRole("admin", "super_admin"), bookingController.confirmBookingStatus);
-
-
-router.post("/cancelBooking/:id", auth, checkRole("admin", "super_admin"), bookingController.cancelBookingStatus);
-
-
-router.post("/completeBooking/:id", auth, checkRole("admin", "super_admin"), bookingController.completeBookingStatus);
-
-router.get("/availableTimeSlots", auth, bookingController.availableTimeSlots);
-
-
-router.get("/:id", auth, bookingController.getBookingById);
+router.get("/user", auth, bookingController.bookingByUserId);
 
 router.get(
-  "/user/:id",
+  "/:id",
   auth,
   checkRole("admin", "super_admin"),
   bookingController.bookingByUserId,
 );
-
-
-
 
 export default router;
