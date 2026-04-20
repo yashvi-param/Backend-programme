@@ -13,13 +13,16 @@ import {
   updateServiceSchema,
 } from "../validation/serviceSchema.js";
 
-import userController from "../controller/userController.js";
+import userController from "../controller/UserController.js";
 import categoryController from "../controller/categoryController.js";
 import serviceController from "../controller/serviceController.js";
 
 const router = express.Router();
 
-// ==================== USER ROUTES ====================
+
+
+// routes
+
 router.get(
   "/allUser",
   auth,
@@ -31,8 +34,8 @@ router.patch(
   "/update/:id",
   auth,
   checkRole("admin", "super_admin"),
-  userController.update,
-);
+  userController.updateUser,
+);  
 
 router.delete(
   "/delete/:id",
@@ -41,7 +44,8 @@ router.delete(
   userController.deleteUser,
 );
 
-// ==================== CATEGORY ROUTES ====================
+
+// category
 
 
 router.post(
@@ -85,8 +89,9 @@ router.delete(
   categoryController.deleteCategory,
 );
 
-// ==================== SERVICE ROUTES ====================
 
+
+// services
 
 router.post(
   "/addService",
@@ -103,6 +108,7 @@ router.get(
   checkRole("admin", "super_admin"),
   serviceController.getAll,
 );
+
 
 
 router.get(
@@ -128,5 +134,6 @@ router.delete(
   checkRole("admin", "super_admin"),
   serviceController.deleteService,
 );
+
 
 export default router;
