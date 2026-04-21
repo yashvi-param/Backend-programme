@@ -1,60 +1,114 @@
-import Provider from "../models/Provider.js";
-import Service from "../models/Service.js";
-import User from "../models/User.js";
-import HttpError from "../middleware/HttpError.js";
+
+import User from "../model/User.js";
+import Service from "../model/Services.js"
+
+import HttpError from "../middleware/HttpError.js"
+import Provider from "../middleware/Provider.js";
+
 
 
 const registerAsProvider = async (req, res, next) => {
+
+    try {
+
+        const userId = req.user._id;
+
+
+        const user = await User.findById(userId)
+
+        if (!user) {
+
+            return next(new HttpError("user not found", 404))
+        }
+
+        const existingProvider = await Provider.findById(userId);
+
+        if (existingProvider) {
+            return next(new HttpError("already provider registered with this id", 500))
+        }
+
+        const { services, experience, documents } = req.body;
+
+
+
+        if (!services || !Array.isArray(services) || services.length === 0) {
+            return next(new HttpError("service is required", 500))
+        }
+
+        const validService = await Service.find({
+            _id: { $in: services }
+
+        }).select("_id");
+
+        if (validService.length !== services.length) {
+            return next(new HttpError("service are missing "));
+        }
+
+
+        const newProvider = new Provider({
+            userId,
+            services: validService,
+            experience,
+            documents
+
+        })
+
+
+        user.role = "provider"
+
+
+        await user.save();
+
+        await newProvider.save();
+
+        res.status(201).json({ success: true, message: "provider account registered wait for admin approval", newProvider });
+
+    } catch (error) {
+
+        next(new HttpError(error.message, 500))
+
+    }
+
+
+};
+
+const getProviders = async (req, res, next) => {
   try {
 
-    const userId = req.user._id;
+    const { isVerified } = req.query;
 
-    const { document, experience, services } = req.body;
+    let query = {};
 
-    const user = await User.findById(userId);
-    if (!user) {
-      return next(new HttpError("User not found", 404));
+    if (isVerified !== undefined) {
+      query.isVerified = isVerified === "true";
     }
 
-    const existingProvider = await Provider.findOne({ userId });
-    if (existingProvider) {
-      return next(
-        new HttpError("You are already registered as a provider", 400)
-      );
+    const providers = await Provider.find(query)
+      .populate({
+        path: "userId",
+        select: "name email phone",
+      })
+      .populate({
+        path: "services",
+        select: "name",
+      });
+
+    if (!providers.length) {
+      return next(new HttpError("No providers found", 404));
     }
 
-    
-    if (!services || !Array.isArray(services) || services.length === 0) {
-      return next(new HttpError("At least one service is required", 400));
-    }
-
-    const validServices = await Service.find({
-      _id: { $in: services },
-    });
-
-    if (validServices.length !== services.length) {
-      return next(new HttpError("Invalid service IDs", 400));
-    }
-
-    
-    const newProvider = new Provider({
-      userId,
-      document,
-      experience,
-      services,
-    });
-
-    await newProvider.save();
-
-    res.status(201).json({
+    res.status(200).json({
       success: true,
-      message:
-        "Registered as provider successfully. Wait for admin verification",
-      provider: newProvider,
+      message: "Provider details fetched successfully",
+      count: providers.length,
+      providers,
     });
+
   } catch (error) {
-    next(new HttpError(error.message, 500));
+    next(error);
   }
 };
 
-export default { registerAsProvider };
+
+export default { registerAsProvider, getProviders };
+

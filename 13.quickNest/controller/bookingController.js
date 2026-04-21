@@ -1,7 +1,7 @@
 import HttpError from "../middleware/HttpError.js";
 
-import Service from "../models/Service.js";
-import Booking from "../models/Booking.js";
+import Service from "../model/Services.js";
+import Booking from "../model/Booking.js";
 
 
 // CREATE BOOKING
