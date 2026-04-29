@@ -2,7 +2,9 @@ import HttpError from "../middleware/HttpError.js";
 import User from "../model/User.js";
 import cloudinary from "../config/cloudinary.js";
 import sendEmail from "../utils/sendEmail.js";
-import { getWelcomeEmailTemplate } from "../services/emailTemplate.js"
+import { getWelcomeEmailTemplate, getResetPasswordTemplate } from "../services/emailTemplate.js"
+
+import crypto from "crypto";
 
 const add = async (req, res, next) => {
   try {
@@ -101,7 +103,26 @@ const logOutAll = async (req, res, next) => {
 
 const allUser = async (req, res, next) => {
   try {
-    const users = await User.find({});
+
+    const { role, limit, skip, sortBy } = req.query
+
+    let query = {};
+
+    let sortByValue = {};
+
+    if (role) {
+      query.role = role
+    }
+
+    if (sortBy) {
+
+      const [field, order] = sortBy.split(":");
+
+      sortByValue[field] = order === "desc" ? -1 : 1;
+
+    }
+
+    const users = await User.find(query).limit(parseInt(limit) || 5).skip(parseInt(skip) || 0).sort(sortByValue);
 
     if (users.length === 0) {
       res.status(200).json({ success: true, message: "no user data found" });
@@ -109,7 +130,7 @@ const allUser = async (req, res, next) => {
 
     res
       .status(200)
-      .json({ success: true, message: "all user data fetched", users });
+      .json({ success: true, message: "all user data fetched", length: users.length, users });
   } catch (error) {
     next(new HttpError(error.message, 500));
   }
@@ -201,6 +222,101 @@ const deleteUser = async (req, res, next) => {
   }
 };
 
+
+const forgotPassword = async (req, res, next) => {
+
+  try {
+
+    const { email } = req.body;
+
+    const user = await User.findOne({ email })
+
+
+    if (!user) {
+
+      return next(new HttpError("user not found", 404))
+
+    }
+
+    const resetToken = crypto.randomBytes(32).toString("hex");
+
+    const hashedToken = crypto.createHash("sha256").update(resetToken).digest("hex");
+
+
+    user.resetPasswordToken = hashedToken;
+    user.resetPasswordExPiry =  Date.now() + 15 * 60 * 1000;
+
+
+    await user.save();
+
+
+    const resetLink = `localhost:5000/user/reset-password/${resetToken}`
+
+
+
+    await sendEmail({
+      to: user.email,
+      subject: "Password reset Request",
+      html: getResetPasswordTemplate(user.name, resetLink),
+    })
+
+
+    res.status(200).json({ success: true, message: "password reset link send to email successfully", resetLink });
+
+
+
+  } catch (error) {
+
+    next(new HttpError(error.message))
+
+  }
+
+}
+
+
+const resetPassword = async (req, res, next) => {
+
+  try {
+
+    const { token } = req.params;
+
+
+    const { newPassword, confirmPassword } = req.body;
+
+    if (newPassword !== confirmPassword) {
+      return next(new HttpError("password is not matched", 400));
+
+    }
+
+
+    const hashedToken = crypto.createHash("sha256").update(token).digest("hex")
+
+
+    const user = await User.findOne({
+      resetPasswordToken: hashedToken,
+      resetPasswordExPiry: { $gt: Date.now() }
+
+    })
+
+
+    if (!user) {
+      return next(new HttpError("password or token is expired please try again", 400))
+    }
+
+    user.password = confirmPassword;
+    user.resetPasswordToken = null,
+      user.resetPasswordExPiry = null
+
+    await user.save();
+
+
+    res.status(200).json({ success: true, message: "password update successfully" })
+
+  } catch (error) {
+    next(new HttpError(error.message))
+  }
+}
+
 export default {
   add,
   login,
@@ -210,4 +326,6 @@ export default {
   allUser,
   update,
   deleteUser,
+  forgotPassword,
+  resetPassword
 };

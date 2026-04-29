@@ -19,7 +19,7 @@ const userSchema = new mongoose.Schema(
       required: true,
     },
     phone: {
-      type: Number,
+      type: String,
       required: true,
     },
     role: {
@@ -36,6 +36,14 @@ const userSchema = new mongoose.Schema(
     isVerified: {
       type: Boolean,
       default: false,
+    },
+    resetPasswordToken: {
+      type: String,
+      default: null
+    },
+    resetPasswordExPiry: {
+      type: Date,
+      default: null
     },
     tokens: [
       {

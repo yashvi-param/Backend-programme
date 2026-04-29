@@ -1,7 +1,7 @@
 
 
 export const getWelcomeEmailTemplate = (userName) => {
-    return `
+  return `
     <!DOCTYPE html>
     <html lang="en">
     <head>
@@ -270,4 +270,89 @@ export const getWelcomeEmailTemplate = (userName) => {
   `;
 };
 
-export default { getWelcomeEmailTemplate }
+
+
+
+export function getResetPasswordTemplate(username, resetLink) {
+  return `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8" />
+  <title>Reset Password - Quick Nest</title>
+</head>
+
+<body style="margin:0; padding:0; background-color:#f2f5f9; font-family:Arial, sans-serif;">
+
+  <table width="100%" cellspacing="0" cellpadding="0">
+    <tr>
+      <td align="center">
+
+        <table width="600" style="background:#ffffff; margin:40px 0; border-radius:10px; overflow:hidden;">
+          
+          <!-- Header -->
+          <tr>
+            <td style="background:#0d6efd; padding:20px; text-align:center; color:#ffffff;">
+              <h1 style="margin:0;">Quick Nest</h1>
+              <p style="margin:5px 0 0;">Secure Your Account</p>
+            </td>
+          </tr>
+
+          <!-- Body -->
+          <tr>
+            <td style="padding:30px; color:#333;">
+              
+              <h2 style="margin-top:0;">Reset Your Password</h2>
+
+              <p>Hello <strong>${username}</strong>,</p>
+
+              <p>
+                We received a request to reset your password. Click the button below to create a new one:
+              </p>
+
+              <!-- Button -->
+              <div style="text-align:center; margin:30px 0;">
+                <a href="${resetLink}" 
+                   style="background:#0d6efd; color:#ffffff; padding:14px 25px; text-decoration:none; border-radius:6px; font-size:16px; display:inline-block;">
+                   Reset Password
+                </a>
+              </div>
+
+              <p style="font-size:14px; color:#666;">
+                This reset link will expire in <strong>15 minutes</strong> for security reasons.
+              </p>
+
+              <p style="font-size:14px; color:#666;">
+                After 15 minutes, the link will become invalid and you will need to request a new password reset.
+              </p>
+
+              <p style="font-size:14px; color:#666;">
+                If you didn’t request this, you can safely ignore this email.
+              </p>
+
+              <hr style="border:none; border-top:1px solid #eee; margin:30px 0;" />
+
+              <p style="margin:0;">Thanks,</p>
+              <p style="margin:0;"><strong>Team Quick Nest</strong></p>
+
+            </td>
+          </tr>
+
+          <!-- Footer -->
+          <tr>
+            <td style="background:#f8f9fa; text-align:center; padding:15px; font-size:12px; color:#888;">
+              © 2026 Quick Nest. All rights reserved.
+            </td>
+          </tr>
+
+        </table>
+
+      </td>
+    </tr>
+  </table>
+
+</body>
+</html>
+  `;
+}
+export default { getWelcomeEmailTemplate, getResetPasswordTemplate }
