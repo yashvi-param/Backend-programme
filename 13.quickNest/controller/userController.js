@@ -1,67 +1,70 @@
+import User from "../models/User.js";
 import HttpError from "../middleware/HttpError.js";
-import User from "../model/User.js";
+
 import cloudinary from "../config/cloudinary.js";
-import sendEmail from "../utils/sendEmail.js";
-import { getWelcomeEmailTemplate, getResetPasswordTemplate } from "../services/emailTemplate.js"
 
-import crypto from "crypto";
-
+// CREATE USER
 const add = async (req, res, next) => {
   try {
-    const { name, email, password, role, phone } = req.body;
+    const { name, email, password, phone } = req.body;
 
     const newUser = {
       name,
       email,
       password,
-      role,
       phone,
       profilePic: req.file ? req.file.path : "undefined",
       cloudinaryId: req.file ? req.file.filename : "undefined",
     };
 
     console.log("cloudinaryId", newUser.cloudinaryId);
-
+    
     const user = new User(newUser);
 
     await user.save();
 
-    sendEmail({
-      to: newUser.email,
-      subject: "welcome to QuickNest",
-      html: getWelcomeEmailTemplate(newUser.name)
-    })
-
-    res.status(201).json({ success: true, user });
+    res.status(201).json({
+      success: true,
+      user,
+    });
   } catch (error) {
     next(new HttpError(error.message, 500));
   }
 };
 
+
+// LOGIN USER
 const login = async (req, res, next) => {
   try {
     const { email, password } = req.body;
 
     const user = await User.findByCredentials(email, password);
 
-    const token = await user.generateAuthToken();
-
     if (!user) {
-      return next(new HttpError("unable to login"));
+      return next(new HttpError("unable to login", 400));
     }
 
-    res.status(200).json({ success: true, user, token });
+    const token = await user.generateAuthToken();
+
+    res.status(200).json({
+      success: true,
+      message: "Login successful",
+      user,
+      token,
+    });
   } catch (error) {
     next(new HttpError(error.message, 500));
   }
 };
 
+
+// PROTECTED ROUTE
 const authLogin = async (req, res, next) => {
   try {
     const user = req.user;
 
     if (!user) {
-      return next(new HttpError("user not found", 404));
+      return next(new HttpError("unable to login", 401));
     }
 
     res.status(200).json({ success: true, user });
@@ -70,6 +73,8 @@ const authLogin = async (req, res, next) => {
   }
 };
 
+
+// LOGOUT
 const logOut = async (req, res, next) => {
   try {
     req.user.tokens = req.user.tokens.filter((t) => {
@@ -86,6 +91,8 @@ const logOut = async (req, res, next) => {
   }
 };
 
+
+// LOGOUT ALL
 const logOutAll = async (req, res, next) => {
   try {
     req.user.tokens = [];
@@ -101,221 +108,98 @@ const logOutAll = async (req, res, next) => {
   }
 };
 
+
+// GET ALL 
 const allUser = async (req, res, next) => {
   try {
-
-    const { role, limit, skip, sortBy } = req.query
-
-    let query = {};
-
-    let sortByValue = {};
-
-    if (role) {
-      query.role = role
-    }
-
-    if (sortBy) {
-
-      const [field, order] = sortBy.split(":");
-
-      sortByValue[field] = order === "desc" ? -1 : 1;
-
-    }
-
-    const users = await User.find(query).limit(parseInt(limit) || 5).skip(parseInt(skip) || 0).sort(sortByValue);
+    const users = await User.find({});
 
     if (users.length === 0) {
-      res.status(200).json({ success: true, message: "no user data found" });
+      return res
+        .status(200)
+        .json({ success: true, message: "no user data found" });
     }
 
-    res
-      .status(200)
-      .json({ success: true, message: "all user data fetched", length: users.length, users });
+    res.status(200).json({
+      success: true,
+      message: "all user data fetched",
+      users,
+    });
   } catch (error) {
     next(new HttpError(error.message, 500));
   }
 };
 
+
+// UPDATE 
 const update = async (req, res, next) => {
   try {
-    let targetedUser = req.params.id || req.user._id;
-
-    const user = await User.findById(targetedUser);
+    const user = req.user;
 
     if (!user) {
       return next(new HttpError("user not found", 404));
     }
 
     const updates = Object.keys(req.body);
+    const allowedFields = ["name", "password", "phone"];
 
-    let allowedFields = ["name", "password", "phone", "profilePic"];
-
-    if (req.user.role === "admin" || req.user.role === "super_admin") {
-      allowedFields = [...allowedFields, "role", "isVerified"];
-    }
-
-    const isValid = updates.every((field) => allowedFields.includes(field));
+    const isValid = updates.every((field) =>
+      allowedFields.includes(field)
+    );
 
     if (!isValid) {
-      return next(new HttpError("only allowed field can be updated", 400));
+      return next(
+        new HttpError("only allowed field can be updated", 400)
+      );
     }
 
-    if (
-      !req.user.role === "admin" &&
-      !req.user.role === "super_admin" &&
-      !req.user._id.toString() !== user._id.toString()
-    ) {
-      return next(new HttpError("unauthorized access", 401));
-    }
-
-    updates.forEach((update) => (user[update] = req.body[update]));
-
+  
     if (req.file) {
       if (user.cloudinaryId) {
         await cloudinary.uploader.destroy(user.cloudinaryId);
       }
 
       user.profilePic = req.file.path;
-
       user.cloudinaryId = req.file.filename;
     }
 
+    updates.forEach((update) => {
+      user[update] = req.body[update];
+    });
+
     await user.save();
 
-    res
-      .status(200)
-      .json({ success: true, message: "user Data updated successfully", user });
-  } catch (error) {
-    next(new HttpError(error.message));
-  }
-};
-
-const deleteUser = async (req, res, next) => {
-  try {
-    const targetedUser = req.params.id || req.user._id;
-
-    const user = await User.findById(targetedUser);
-
-    if (!user) {
-      return next(new HttpError("user not found"), 401);
-    }
-
-    if (
-      !req.user.role === "admin" &&
-      !req.user.role === "super_admin" &&
-      !req.user._id.toString() !== user._id.toString()
-    ) {
-      return next(new HttpError("unauthorized access", 401));
-    }
-
-    await User.deleteOne(user);
-
-    if (user.cloudinaryId) {
-      await cloudinary.uploader.destroy(user.cloudinaryId);
-    }
-
-    res
-      .status(200)
-      .json({ success: true, message: "user deleted successfully" });
+    res.status(200).json({
+      success: true,
+      message: "user Data updated successfully",
+      user,
+    });
   } catch (error) {
     next(new HttpError(error.message, 500));
   }
 };
 
 
-const forgotPassword = async (req, res, next) => {
-
+// DELETE 
+const deleteUser = async (req, res, next) => {
   try {
+    const user = req.user;
 
-    const { email } = req.body;
-
-    const user = await User.findOne({ email })
-
-
-    if (!user) {
-
-      return next(new HttpError("user not found", 404))
-
+    
+    if (user.cloudinaryId) {
+      await cloudinary.uploader.destroy(user.cloudinaryId);
     }
 
-    const resetToken = crypto.randomBytes(32).toString("hex");
+    await User.deleteOne(user);
 
-    const hashedToken = crypto.createHash("sha256").update(resetToken).digest("hex");
-
-
-    user.resetPasswordToken = hashedToken;
-    user.resetPasswordExPiry =  Date.now() + 15 * 60 * 1000;
-
-
-    await user.save();
-
-
-    const resetLink = `localhost:5000/user/reset-password/${resetToken}`
-
-
-
-    await sendEmail({
-      to: user.email,
-      subject: "Password reset Request",
-      html: getResetPasswordTemplate(user.name, resetLink),
-    })
-
-
-    res.status(200).json({ success: true, message: "password reset link send to email successfully", resetLink });
-
-
-
+    res.status(200).json({
+      success: true,
+      message: "user deleted successfully",
+    });
   } catch (error) {
-
-    next(new HttpError(error.message))
-
+    next(new HttpError(error.message, 500));
   }
-
-}
-
-
-const resetPassword = async (req, res, next) => {
-
-  try {
-
-    const { token } = req.params;
-
-
-    const { newPassword, confirmPassword } = req.body;
-
-    if (newPassword !== confirmPassword) {
-      return next(new HttpError("password is not matched", 400));
-
-    }
-
-
-    const hashedToken = crypto.createHash("sha256").update(token).digest("hex")
-
-
-    const user = await User.findOne({
-      resetPasswordToken: hashedToken,
-      resetPasswordExPiry: { $gt: Date.now() }
-
-    })
-
-
-    if (!user) {
-      return next(new HttpError("password or token is expired please try again", 400))
-    }
-
-    user.password = confirmPassword;
-    user.resetPasswordToken = null,
-      user.resetPasswordExPiry = null
-
-    await user.save();
-
-
-    res.status(200).json({ success: true, message: "password update successfully" })
-
-  } catch (error) {
-    next(new HttpError(error.message))
-  }
-}
+};
 
 export default {
   add,
@@ -326,6 +210,4 @@ export default {
   allUser,
   update,
   deleteUser,
-  forgotPassword,
-  resetPassword
 };
