@@ -1,9 +1,8 @@
-import Provider from "../model/provider.js";
-import HttpError from "../middleware/HttpError.js";
-import User from "../model/UserModel.js";
-import Service from "../model/service.js";
+import User from "../model/User.js";
+import Service from "../model/Services.js";
 
-import services from "../services/emailTemplet.js";
+import HttpError from "../middleware/HttpError.js";
+import Provider from "../model/Provider.js";
 import Booking from "../model/Booking.js";
 
 const registerAsProvider = async (req, res, next) => {
@@ -13,24 +12,21 @@ const registerAsProvider = async (req, res, next) => {
     const user = await User.findById(userId);
 
     if (!user) {
-      return next(new HttpError("User not Found", 404));
+      return next(new HttpError("user not found", 404));
     }
 
-    const existingProvider = await Provider.findOne({ userId });
+    const existingProvider = await Provider.findById(userId);
 
     if (existingProvider) {
-      user.role = "provider";
-      await user.save();
-
       return next(
-        new HttpError("Already provider Registered with this id", 500),
+        new HttpError("already provider registered with this id", 500),
       );
     }
 
     const { services, experience, documents } = req.body;
 
     if (!services || !Array.isArray(services) || services.length === 0) {
-      return next(new HttpError("Services is Required", 500));
+      return next(new HttpError("service is required", 500));
     }
 
     const validService = await Service.find({
@@ -38,7 +34,7 @@ const registerAsProvider = async (req, res, next) => {
     }).select("_id");
 
     if (validService.length !== services.length) {
-      return next(new HttpError("Service are missing"));
+      return next(new HttpError("service are missing "));
     }
 
     const newProvider = new Provider({
@@ -50,77 +46,84 @@ const registerAsProvider = async (req, res, next) => {
 
     user.role = "provider";
 
-    await newProvider.save();
-
     await user.save();
+
+    await newProvider.save();
 
     res.status(201).json({
       success: true,
-      message: "Provider Account registered wait for Admin approval",
+      message: "provider account registered wait for admin approval",
       newProvider,
     });
   } catch (error) {
-    next(new HttpError(error.message));
+    next(new HttpError(error.message, 500));
   }
 };
 
 const getProvider = async (req, res, next) => {
   try {
-    let { isValid } = req.query;
-
     let query = {};
 
-    if (!isValid) {
-      query.isValid = isValid === "true";
+    let { isVerified } = req.query;
+
+    if (isVerified != undefined) {
+      query.isVerified = isVerified === "true";
     }
 
     const providers = await Provider.find(query).populate([
-      { path: "userId", select: "name email password" },
+      { path: "userId", select: "name email phone" },
       { path: "services", select: "name" },
     ]);
 
     if (!providers.length) {
-      return next(new HttpError("No Provider Data Found..", 404));
+      return next(new HttpError("no provider data found", 404));
     }
 
     res.status(200).json({
       success: true,
-      message: "Provider Details fetch SuccessFully..!",
+      message: "provider details fetched successfully",
       length: providers.length,
       providers,
     });
   } catch (error) {
-    next(new HttpError(error.message));
+    next(new HttpError(error.message, 500));
   }
 };
 
-const getProviderBooking = async (req, res, next) => {
+const getProviderBookings = async (req, res, next) => {
   try {
-    const userId = req.params.id || req.User._id;
+    const userId = req.params.id || req.user._id;
 
     const user = await Provider.findById(userId);
 
     if (!user) {
-      return next(new HttpError("User not Founded..!"));
+      return next(new HttpError("user not found", 404));
     }
 
-    const bookings = await Booking.find({ ProviderId: User._id });
+    const bookings = await Booking.find({ providerId: user._id });
 
     if (!bookings || bookings.length === 0) {
-      return next(new HttpError("No Booking Data Founded...!"));
+      return next(new HttpError("no booking data found", 404));
     }
 
-    if (bookings[0].ProviderId.toString() !== req.User._id) {
+    if (bookings[0].providerId.toString() !== req.user._id) {
       return next(
-        new HttpError("You are not allowed to see this Booking", 400),
+        new HttpError("you are not allowed to see this bookings", 400),
       );
     }
 
-    res
-      .status(200)
-      .json({ success: true, message: "Booking fetched Successfully..!" });
+    res.status(200).json({
+      success: true,
+      message: "booking fetched successfully",
+      bookings,
+    });
   } catch (error) {
     next(new HttpError(error.message, 500));
   }
 };
-export default { registerAsProvider, getProvider, getProviderBooking };
+
+
+
+
+
+export default { registerAsProvider, getProvider, getProviderBookings };

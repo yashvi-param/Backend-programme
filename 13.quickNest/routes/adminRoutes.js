@@ -16,6 +16,7 @@ import {
 import userController from "../controller/userController.js";
 import categoryController from "../controller/categoryController.js";
 import serviceController from "../controller/serviceController.js";
+import adminController from "../controller/adminController.js";
 
 const router = express.Router();
 
@@ -43,7 +44,6 @@ router.delete(
 
 // ==================== CATEGORY ROUTES ====================
 
-
 router.post(
   "/addCategory",
   auth,
@@ -52,14 +52,12 @@ router.post(
   categoryController.add,
 );
 
-
 router.get(
   "/categories",
   auth,
   checkRole("admin", "super_admin"),
   categoryController.getAll,
 );
-
 
 router.get(
   "/category/:id",
@@ -68,7 +66,6 @@ router.get(
   categoryController.getById,
 );
 
-
 router.patch(
   "/category/:id",
   auth,
@@ -76,7 +73,6 @@ router.patch(
   checkRole("admin", "super_admin"),
   categoryController.update,
 );
-
 
 router.delete(
   "/category/:id",
@@ -87,7 +83,6 @@ router.delete(
 
 // ==================== SERVICE ROUTES ====================
 
-
 router.post(
   "/addService",
   auth,
@@ -96,7 +91,6 @@ router.post(
   serviceController.add,
 );
 
-
 router.get(
   "/services",
   auth,
@@ -104,14 +98,12 @@ router.get(
   serviceController.getAll,
 );
 
-
 router.get(
   "/service/:id",
   auth,
   checkRole("admin", "super_admin"),
   serviceController.getById,
 );
-
 
 router.patch(
   "/service/:id",
@@ -121,12 +113,20 @@ router.patch(
   serviceController.update,
 );
 
-
 router.delete(
   "/service/:id",
   auth,
   checkRole("admin", "super_admin"),
   serviceController.deleteService,
+);
+
+// admin dashboard statics
+
+router.get(
+  "/dashboardStatics",
+  auth,
+  checkRole("admin", "super_admin"),
+  adminController.dashBoardStatics,
 );
 
 export default router;

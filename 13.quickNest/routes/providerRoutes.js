@@ -15,10 +15,10 @@ router.get(
 );
 
 router.get(
-  "/getProviderBooking:id",
+  "/getProviderBooking/:id",
   auth,
   checkRole("provider", "admin", "super_admin"),
-  providerController.getProviderBooking,
+  providerController.getProviderBookings,
 );
 
 export default router;

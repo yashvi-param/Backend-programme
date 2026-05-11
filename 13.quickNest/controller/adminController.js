@@ -1,58 +1,93 @@
+import User from "../model/User.js";
+import Bookings from "../model/Booking.js";
+import Provider from "../model/Provider.js";
+import Service from "../model/Services.js";
+
 import HttpError from "../middleware/HttpError.js";
-import User from "../model/userModel.js";
 
-const updateUserData = async (req, res, next) => {
+const dashBoardStatics = async (req, res, next) => {
   try {
-    const id = req.params.id;
+    const totalUsers = await User.countDocuments();
 
-    const user = await User.findById(id);
+    const totalCustomer = await User.countDocuments({ role: "customer" });
 
-    if (!user) {
-      return next(new HttpError("user not found with this id", 404));
-    }
+    const totalProvider = await User.countDocuments({ role: "provider" });
 
-    const updates = Object.keys(req.body);
+    const totalIsApprovedProvider = await Provider.countDocuments({
+      isVerified: true,
+    });
 
-    const allowedField = [
-      "name",
-      "email",
-      "password",
-      "phone",
-      "role",
-      "profilePic",
-      "isVerified",
-    ];
+    const totalIsRejectedProvider = await Provider.countDocuments({
+      isVerified: false,
+    });
 
-    const isValid = updates.every((field) => allowedField.includes(field));
+    const totalBookings = await Bookings.countDocuments();
+    const pendingBookings = await Bookings.countDocuments({
+      status: "pending",
+    });
 
-    if (!isValid) {
-      return next(new HttpError("only allow field can updated", 400));
-    }
+    const completedBookings = await Bookings.countDocuments({
+      status: "completed",
+    });
 
-    updates.forEach((update) => (user[update] = req.body[update]));
+    const cancelledBookings = await Bookings.countDocuments({
+      status: "cancelled",
+    });
 
-    await user.save();
+    const confirmBookings = await Bookings.countDocuments({
+      status: "confirmed",
+    });
 
-    res
-      .status(200)
-      .json({ success: true, message: "user update successfully", user });
+    const totalServices = await Service.countDocuments();
+
+    const totalActiveServices = await Service.countDocuments({
+      isActive: true,
+    });
+
+    const totalDeActiveServices = await Service.countDocuments({
+      isActive: false,
+    });
+
+    const totalRevenue = await Bookings.aggregate([
+      {
+        $group: {
+          _id: null,
+          revenue: { $sum: "$totalPrice" },
+        },
+      },
+    ]);
+
+    const totalBookingsAggregate = await Bookings.aggregate([
+      {
+        $group: {
+          _id: "$status",
+          count: { $sum: 1 },
+        },
+      },
+    ]);
+
+    res.status(200).json({
+      success: true,
+      message: "dashboard statics fetched successfully",
+      totalUsers,
+      totalCustomer,
+      totalProvider,
+      totalIsApprovedProvider,
+      totalIsRejectedProvider,
+      totalBookings,
+      pendingBookings,
+      completedBookings,
+      cancelledBookings,
+      confirmBookings,
+      totalServices,
+      totalActiveServices,
+      totalDeActiveServices,
+      totalRevenue: totalRevenue[0]?.totalRevenue || 0,
+      totalBookingsAggregate,
+    });
   } catch (error) {
     next(new HttpError(error.message, 500));
   }
 };
 
-const deleteUser = async (req, res, next) => {
-  try {
-    const id = req.params.id;
-
-    const user = await User.findByIdAndDelete(id);
-
-    res
-      .status(200)
-      .json({ success: true, message: "user deleted successfully" });
-  } catch (error) {
-    next(new HttpError(error.message, 500));
-  }
-};
-
-export default { updateUserData, deleteUser };
+export default { dashBoardStatics };

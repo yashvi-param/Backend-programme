@@ -6,11 +6,11 @@ import connectDB from "./config/db.js";
 
 import HttpError from "./middleware/HttpError.js";
 
-import UserRouter from "./router/UserRouter.js";
-import adminRouter from "./router/adminRouter.js";
-import bookingRouter from "./router/bookingRouter.js"
+import UserRouter from "./routes/userRoutes.js";
+import adminRouter from "./routes/adminRoutes.js";
+import bookingRouter from "./routes/bookingRoutes.js"
 
-import providerRouter from "./router/providerRouter.js"
+import providerRouter from "./routes/providerRoutes.js"
 
 import {rateLimiter} from "./middleware/rateLimit.js"
 import helmet from "helmet";

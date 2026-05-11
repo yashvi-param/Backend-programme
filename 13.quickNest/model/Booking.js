@@ -1,5 +1,5 @@
 import mongoose from "mongoose";
-import Provider from "./provider.js";
+import Provider from "./Provider.js";
 
 
 const bookingSchema = new mongoose.Schema({
